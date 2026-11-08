@@ -8,11 +8,11 @@
 <title>
    EPC Buddy
   </title>
-<link href="css/styles.css?v=pwa-20261108" rel="stylesheet"/>
-<link rel="manifest" href="manifest.webmanifest">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="default">
-<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link href="css/styles.css?v=wizard-ui-3" rel="stylesheet"/>
+<link href="manifest.webmanifest" rel="manifest"/>
+<meta content="yes" name="apple-mobile-web-app-capable"/>
+<meta content="default" name="apple-mobile-web-app-status-bar-style"/>
+<link href="icons/icon-192.png" rel="apple-touch-icon"/>
 </head>
 <body>
 <header>
@@ -37,7 +37,6 @@
    </button>
 </header>
 <main>
-
 <section class="card hidden" id="auth">
 <h1>
      Welkom bij EPC Buddy
@@ -187,12 +186,12 @@
 </div>
 <label class="hidden" id="vat-row">
       Btw-nummer
-      <input id="vat" name="client_vat_number" placeholder="BE0123456789">
-</input></label>
+      <input id="vat" name="client_vat_number" placeholder="BE0123456789"/>
+</label>
 <label class="check">
-<input id="same" type="checkbox">
+<input id="same" type="checkbox"/>
       Zelfde adres als te certificeren pand
-     </input></label>
+     </label>
 <div id="client-address">
 <h3>
        Adres opdrachtgever
@@ -246,16 +245,15 @@
 <section class="hidden facade-screen" id="facade-page">
 <div class="facade-page-head"><button aria-label="Terug naar dossier" class="detail-back-button" id="facade-back" type="button"><img alt="" src="ico/vorige-pijl.svg"/></button><span class="facade-page-icon" id="facade-page-icon"></span><h1 id="facade-page-title">Voorgevel</h1><button aria-label="Gevel verwijderen" class="facade-delete" id="facade-delete" title="Gevel verwijderen" type="button"><img alt="" class="delete-icon" src="ico/delete.svg"/></button></div>
 <div class="epc-section-content"><div class="construction-list" id="construction-list"></div><div aria-label="Foto’s van dit onderdeel" class="epc-photo-gallery" id="facade-page-photos"></div></div>
-
 <div class="epc-photo-actions"><button aria-label="Gevelconstructie toevoegen" class="floating-add" id="construction-add" type="button">+</button><button aria-label="Foto nemen" class="epc-camera-button" data-photo-for="construction-add" title="Foto nemen" type="button"><img alt="" src="ico/camera.svg"/></button></div>
 </section>
 <section class="hidden facade-screen" id="construction-editor">
 <div class="facade-page-head"><button aria-label="Terug naar gevel" class="detail-back-button" id="construction-back" type="button"><img alt="" src="ico/vorige-pijl.svg"/></button><span class="facade-page-icon"><img alt="" src="ico/gevelconstructie.svg"/></span><h1 id="construction-heading">Nieuwe gevelconstructie</h1></div>
-<form class="construction-form" id="construction-form">
-<label>Naam *<input autocomplete="off" maxlength="120" name="name" required=""/></label>
+<div aria-live="polite" class="epc-wizard hidden" id="construction-wizard"></div><form class="construction-form" id="construction-form">
+<label>Naam *<input autocomplete="off" maxlength="120" name="name" required=""/></label><label class="epc-finish-edit">Afwerking<select name="finish"><option value="">Niet opgegeven</option><option value="Gevelsteen">Gevelsteen</option><option value="Hout">Hout</option><option value="Crepi">Crepi</option><option value="Natuursteen">Natuursteen</option><option value="Sidings">Sidings</option><option value="Leien">Leien</option><option value="Vulpaneel">Vulpaneel</option><option value="Zink">Zink</option><option value="PVC">PVC</option><option value="Glas">Glas</option><option value="Andere">Andere</option><option value="Pannen">Pannen</option><option value="Riet">Riet</option><option value="Golfplaten">Golfplaten</option><option value="Roofing">Roofing</option><option value="EPDM">EPDM</option><option value="Rubber">Rubber</option><option value="EPBD">EPBD</option></select></label>
 <label>Begrenzing<select name="boundary"><option value="">Maak een keuze</option><option value="Buiten">Buiten</option><option value="AOR">AOR</option><option value="Kelder">Kelder</option><option value="Grond">Grond</option><option value="AVR">AVR</option></select></label>
 <label>Volledig beglaasd<select name="fully_glazed"><option value="">Onbekend</option><option value="true">Ja</option><option value="false">Nee</option></select></label>
-<label>Isolatie<select name="insulation"><option value="">Maak een keuze</option><option value="Aanwezig">Aanwezig</option><option value="Onbekend">Onbekend</option><option value="PUR/PIR">PUR/PIR</option><option value="MW">MW</option><option value="EPS">EPS</option><option value="XPS">XPS</option><option value="PUR/PIR in situ">PUR/PIR in situ</option><option value="MW in situ">MW in situ</option><option value="EPS in situ">EPS in situ</option><option value="CG">CG</option><option value="PF">PF</option><option value="Perliet">Perliet</option></select></label>
+<label>Isolatie<select name="insulation"><option value="">Maak een keuze</option><option value="Afwezig">Geen</option><option value="Aanwezig">Aanwezig</option><option value="Onbekend">Onbekend</option><option value="PUR/PIR">PUR/PIR</option><option value="MW">MW</option><option value="EPS">EPS</option><option value="XPS">XPS</option><option value="PUR/PIR in situ">PUR/PIR in situ</option><option value="MW in situ">MW in situ</option><option value="EPS in situ">EPS in situ</option><option value="CG">CG</option><option value="PF">PF</option><option value="Perliet">Perliet</option></select></label>
 <label>Dikte isolatie (mm)<input inputmode="decimal" min="0" name="insulation_thickness_mm" step="0.1" type="number"/></label>
 <label>Plaats isolatie<select name="insulation_location"><option value="">Maak een keuze</option><option value="Buiten">Buiten</option><option value="Traditionele spouw">Traditionele spouw</option><option value="Houtskelet">Houtskelet</option><option value="Binnen">Binnen</option><option value="Onbekend">Onbekend</option></select></label>
 <label>Onderbreking isolatie<select name="insulation_interruption"><option value="">Maak een keuze</option><option value="Onbekend">Onbekend</option><option value="Afwezig">Afwezig</option><option value="Aanwezig">Aanwezig</option></select></label>
@@ -269,13 +267,12 @@
 <section class="hidden facade-screen" id="envelope-page">
 <div class="facade-page-head"><button aria-label="Terug naar dossier" class="detail-back-button" id="envelope-page-back" type="button"><img alt="" src="ico/vorige-pijl.svg"/></button><span class="facade-page-icon" id="envelope-page-icon"></span><h1 id="envelope-page-title">Hellend dak</h1><button class="facade-delete" id="envelope-page-delete" title="Onderdeel verwijderen" type="button"><img alt="" class="delete-icon" src="ico/delete.svg"/></button></div>
 <div class="epc-section-content"><div class="construction-list" id="envelope-construction-list"></div><div aria-label="Foto’s van dit onderdeel" class="epc-photo-gallery" id="envelope-page-photos"></div></div>
-
 <div class="epc-photo-actions"><button aria-label="Constructie toevoegen" class="floating-add" id="envelope-construction-add" type="button">+</button><button aria-label="Foto nemen" class="epc-camera-button" data-photo-for="envelope-construction-add" title="Foto nemen" type="button"><img alt="" src="ico/camera.svg"/></button></div>
 </section>
 <section class="hidden facade-screen" id="envelope-editor">
 <div class="facade-page-head"><button aria-label="Terug naar dossier" class="detail-back-button" id="envelope-back" type="button"><img alt="" src="ico/vorige-pijl.svg"/></button><span class="facade-page-icon" id="envelope-icon"></span><h1 id="envelope-heading">Dak / vloer</h1></div>
-<form class="construction-form epc-inspection-form" id="envelope-form">
-<label>Naam *<input maxlength="120" name="name" required=""/></label>
+<div aria-live="polite" class="epc-wizard hidden" id="envelope-wizard"></div><form class="construction-form epc-inspection-form" id="envelope-form">
+<label>Naam *<input maxlength="120" name="name" required=""/></label><label class="epc-finish-edit" data-kinds="hellend_dak plat_dak">Afwerking<select name="finish"><option value="">Niet opgegeven</option><option value="Gevelsteen">Gevelsteen</option><option value="Hout">Hout</option><option value="Crepi">Crepi</option><option value="Natuursteen">Natuursteen</option><option value="Sidings">Sidings</option><option value="Leien">Leien</option><option value="Vulpaneel">Vulpaneel</option><option value="Zink">Zink</option><option value="PVC">PVC</option><option value="Glas">Glas</option><option value="Andere">Andere</option><option value="Pannen">Pannen</option><option value="Riet">Riet</option><option value="Golfplaten">Golfplaten</option><option value="Roofing">Roofing</option><option value="EPDM">EPDM</option><option value="Rubber">Rubber</option><option value="EPBD">EPBD</option></select></label>
 <label data-kinds="plafond">Begrenzing<select name="boundary"><option value="">Maak een keuze</option><option value="AOR">AOR</option><option value="AVR">AVR</option></select></label>
 <label data-kinds="vloer">Begrenzing<select name="boundary"><option value="">Maak een keuze</option><option value="Buiten">Buiten</option><option value="AOR">AOR</option><option value="Kelder">Kelder</option><option value="Grond">Grond</option><option value="AVR">AVR</option></select></label>
 <label data-kinds="hellend_dak plat_dak">Volledig beglaasd<select name="fully_glazed"><option value="">Maak een keuze</option><option value="true">Ja</option><option value="false">Nee</option></select></label>
@@ -394,10 +391,9 @@
 </div>
 </aside>
 <button aria-label="Naar boven" class="scroll-top hidden" id="scroll-top" title="Naar boven" type="button"><img alt="" src="ico/scroll-to-top.svg"/></button>
-
 <!-- Niet-blokkerend bij korte bewerkingen; zichtbaar bij trage netwerkacties. -->
-<div id="epc-loading" class="epc-loading hidden" role="status" aria-live="polite" aria-label="Even geduld">
- <div class="epc-loading-card"><div class="epc-loading-spinner" aria-hidden="true"></div><span id="epc-loading-text">Even geduld…</span></div>
+<div aria-label="Even geduld" aria-live="polite" class="epc-loading hidden" id="epc-loading" role="status">
+<div class="epc-loading-card"><div aria-hidden="true" class="epc-loading-spinner"></div><span id="epc-loading-text">Even geduld…</span></div>
 </div>
 <div aria-live="polite" id="notice" role="status">
 </div>
@@ -405,7 +401,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js">
 </script>
 <script src="js/config.js?v=1"></script>
-<script src="js/app.js?v=pwa-20261108">
+<script src="js/app.js?v=wizard-ui-3">
 </script>
 <script>
 /* Installable app shell. Registration never blocks login or dossier loading.

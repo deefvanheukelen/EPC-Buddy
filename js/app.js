@@ -321,7 +321,7 @@ $('construction-add').onclick=async()=>{
 $('construction-overlay').onclick=$('construction-drawer-close').onclick=closeConstructionDrawer;
 async function loadConstructionForEdit(id){const {data,error}=await db.from('epc_facade_constructions').select('*').eq('id',id).eq('facade_id',activeFacade.id).eq('dossier_id',activeDossier.id).single();if(error)return err(error);editConstruction(data)}
 const cf=$('construction-form');
-function editConstruction(d){activeConstruction=d||null;cf.reset();$('construction-heading').textContent=d?'Gevelconstructie':'Nieuwe gevelconstructie';show('construction-delete',!!d);if(d){for(const el of cf.elements){if(!el.name)continue;const value=d[el.name];el.value=value===null||value===undefined?'':typeof value==='boolean'?String(value):String(value)}}screen('construction-editor');window.scrollTo({top:0,behavior:'instant'})}
+function editConstruction(d){activeConstruction=d||null;cf.reset();$('construction-heading').textContent=d?'Gevelconstructie':'Nieuwe gevelconstructie';show('construction-delete',!!d);if(d){for(const el of cf.elements){if(!el.name)continue;const value=d[el.name];el.value=value===null||value===undefined?'':typeof value==='boolean'?String(value):String(value)}}screen('construction-editor');if(d)wizardStop(cf);else wizardStart(cf,'facade');window.scrollTo({top:0,behavior:'instant'})}
 $('construction-back').onclick=$('construction-cancel').onclick=()=>{screen('facade-page');loadConstructions()};
 $('construction-delete').onclick=async()=>{if(!activeConstruction||!confirm('Gevelconstructie "'+activeConstruction.name+'" verwijderen?'))return;const {error}=await db.from('epc_facade_constructions').update({deleted_at:new Date().toISOString()}).eq('id',activeConstruction.id).eq('facade_id',activeFacade.id).eq('dossier_id',activeDossier.id);if(error)return err(error);activeConstruction=null;screen('facade-page');await loadConstructions();await loadSectionPhotos('facade',activeFacade.id,'facade-page');note('Gevelconstructie verwijderd.')};
 cf.onsubmit=async e=>{e.preventDefault();if(!activeDossier||!activeFacade)return;const fd=new FormData(cf), payload={};for(const [key,val] of fd){const v=String(val).trim();payload[key]=v||null}payload.fully_glazed=payload.fully_glazed===null?null:payload.fully_glazed==='true';for(const key of ['insulation_thickness_mm','renovation_reference_year'])payload[key]=payload[key]===null?null:Number(payload[key]);$('construction-save').disabled=true;try{
@@ -347,8 +347,13 @@ cf.onsubmit=async e=>{e.preventDefault();if(!activeDossier||!activeFacade)return
     .eq('dossier_id',activeDossier.id).is('deleted_at',null).select('id');
   if(!r.error && r.data?.length!==ids.length)throw new Error('Niet alle gevelconstructies konden worden bijgewerkt.');
  }else{
+  const {data:allNames,error:namesError}=await db.from('epc_facade_constructions')
+   .select('name').eq('dossier_id',activeDossier.id).is('deleted_at',null);
+  if(namesError)throw namesError;
+  if((allNames||[]).some(x=>x.name.trim().toLocaleLowerCase('nl-BE')===String(payload.name||'').trim().toLocaleLowerCase('nl-BE')))
+   throw new Error('Er bestaat al een gevelconstructie met deze naam in dit dossier. Pas de naam aan.');
   r=await db.from('epc_facade_constructions').insert({...payload,dossier_id:activeDossier.id,facade_id:activeFacade.id}).select('id').single();
- }if(r.error)throw r.error;screen('facade-page');await loadConstructions();await loadSectionPhotos('facade',activeFacade.id,'facade-page');note('Gevelconstructie opgeslagen.')}catch(ex){err(ex)}finally{$('construction-save').disabled=false}};
+ }if(r.error)throw r.error;screen('facade-page');await loadConstructions();await loadSectionPhotos('facade',activeFacade.id,'facade-page');note('Gevelconstructie opgeslagen.')}catch(ex){err(ex);if(!activeConstruction){wizardStart(cf,'facade');wizard.index=wizard.steps.indexOf('final_details');wizardRender()}}finally{$('construction-save').disabled=false}};
 
 $('summary-toggle').onclick=()=>{const isOpen=$('summary-content').classList.toggle('hidden')===false;$('summary-toggle').setAttribute('aria-expanded',String(isOpen));$('summary-arrow').textContent=isOpen?'⌃':'⌄'};
 $('detail-back').onclick=()=>{closeDrawer();activeDossier=null;screen('home');load();window.scrollTo({top:0,behavior:'instant'})};
@@ -443,7 +448,7 @@ function envelopeShow(name,record=null){
   if(!el.name||el.disabled||record[el.name]===undefined)continue;
   el.value=record[el.name]===null?'':String(record[el.name]);
  }
- show('envelope-delete',!!record);screen('envelope-editor');window.scrollTo({top:0,behavior:'instant'});
+ show('envelope-delete',!!record);screen('envelope-editor');if(record)wizardStop(envelopeForm);else wizardStart(envelopeForm,kind);window.scrollTo({top:0,behavior:'instant'});
 }
 $('envelope-back').onclick=$('envelope-cancel').onclick=()=>{screen('envelope-page');loadEnvelopeConstructions()};
 $('envelope-delete').onclick=async()=>{
@@ -471,11 +476,11 @@ envelopeForm.onsubmit=async e=>{
    const sharedPayload={...payload};delete sharedPayload.envelope_id;const {data:changed,error}=await db.from('epc_envelope_constructions').update(sharedPayload).in('id',ids).eq('dossier_id',activeDossier.id).select('id');
    if(error)throw error;if(changed.length!==ids.length)throw new Error('Niet alle gekoppelde constructies zijn bijgewerkt.');
   }else{
-   if((all||[]).some(x=>x.envelope_id===activeEnvelopeRecord.id&&norm(x.name)===norm(payload.name)))throw new Error('Deze constructie is al toegevoegd.');
+   if((all||[]).some(x=>norm(x.name)===norm(payload.name)))throw new Error('Er bestaat al een constructie met deze naam in dit dossier. Pas de naam aan.');
    const {error}=await db.from('epc_envelope_constructions').insert(payload);if(error)throw error;
   }
   screen('envelope-page');await loadEnvelopeConstructions();note('Constructie opgeslagen.');
- }catch(ex){err(ex)}finally{button.disabled=false}
+ }catch(ex){err(ex);if(!activeEnvelopeConstruction){wizardStart(envelopeForm,envelopeKind());wizard.index=wizard.steps.indexOf('final_details');wizardRender()}}finally{button.disabled=false}
 };
 // Installaties: één sectie per type en meerdere items per sectie.
 // Formuliervelden komen uit de eerder opgegeven EPC Buddy-specificatie.
@@ -765,4 +770,263 @@ function toggle(){show('vat-row',$('client-kind').value==='onderneming');show('c
 function address(prefix){return Object.fromEntries(['street','number','postal','city'].map(k=>[k,field(prefix+'_'+k).value.trim()]))}
 function validVat(s){if(!s)return false;const v=s.toUpperCase().replace(/[.\s-]/g,'');if(!/^BE\d{10}$/.test(v))return false;const digits=v.slice(2),base=Number(digits.slice(0,8)),check=Number(digits.slice(8));return 97-(base%97)===check}
 f.onsubmit=async e=>{e.preventDefault();if(!workspace)return note('Geen werkruimte beschikbaar.');const kind=field('client_kind').value,vat=field('client_vat_number').value.trim();if(kind==='onderneming'&&vat&&!validVat(vat))return note('Ongeldig Belgisch btw-nummer (controlecijfers).');const property=address('property'),same=$('same').checked;const payload={dossier_type:field('dossier_type').value,client_phone:field('client_phone').value.trim()||null,client_email:field('client_email').value.trim()||null,dossier_number:field('dossier_number').value.trim()||null,inspection_date:field('inspection_date').value||null,client_kind:kind,client_name:field('client_name').value.trim(),client_vat_number:kind==='onderneming'?(vat||null):null,client_address_same_as_property:same,client_address:same?property:address('client'),property_address:property,title:`${property.street} ${property.number}, ${property.city}`.trim()};$('save').disabled=true;try{let r;if(current){r=await db.from('epc_dossiers').update(payload).eq('id',current).eq('workspace_id',workspace).select('id').single()}else{r=await db.from('epc_dossiers').insert({...payload,workspace_id:workspace,created_by:user.id}).select('id').single()}if(r.error)throw r.error;current=r.data.id;screen('home');await load();note('Dossier opgeslagen in Supabase.')}catch(ex){err(ex)}finally{$('save').disabled=false}};
+
+// --- EPC Buddy guided construction input -------------------------------------
+// All choices use the EXISTING form controls and validation. Only the new
+// 'finish' attribute requires a nullable database column (SQL patch included).
+// The wizard never writes to Supabase until the user explicitly taps Opslaan.
+const WIZ_FINISH={
+ facade:['Gevelsteen','Hout','Crepi','Natuursteen','Sidings','Leien','Vulpaneel','Zink','PVC','Glas','Andere'],
+ hellend_dak:['Pannen','Leien','Riet','Zink','Hout','Golfplaten','Andere','Glas'],
+ plat_dak:['Roofing','EPDM','Rubber','Zink','Hout','Golfplaten','PVC','Andere','Glas']
+};
+const WIZ_LABELS={boundary:'Begrenzing',finish:'Afwerking',fully_glazed:'Volledig beglaasd',
+ dormer_count:'Aantal dakkapellen',slope:'Helling',insulation:'Isolatie',
+ insulation_thickness_mm:'Dikte isolatie',insulation_location:'Plaats isolatie',
+ insulation_interruption:'Onderbreking isolatie',air_layer:'Luchtlaag',
+ wall_type:'Muurtype',element_type:'Constructietype',floor_heating:'Vloerverwarming',
+ renovation_reference_year:'Referentiejaar renovatie',remarks:'Opmerking',name:'Naam'};
+let wizard=null;
+function wizardInput(form,key){return [...form.elements].find(el=>el.name===key&&!el.disabled)}
+function wizardValue(form,key){return wizardInput(form,key)?.value||''}
+function wizardSteps(kind){
+ const base=kind==='facade'?
+ ['boundary','finish','fully_glazed','insulation','insulation_thickness_mm','insulation_location','insulation_interruption','air_layer','wall_type','final_details']:
+ kind==='hellend_dak'?['fully_glazed','finish','dormer_count','slope','insulation','insulation_thickness_mm','insulation_interruption','air_layer','element_type','final_details']:
+ kind==='plat_dak'?['fully_glazed','finish','insulation','insulation_thickness_mm','insulation_interruption','air_layer','element_type','final_details']:
+ kind==='plafond'?['boundary','insulation','insulation_thickness_mm','insulation_interruption','air_layer','element_type','final_details']:
+ ['boundary','insulation','insulation_thickness_mm','insulation_interruption','floor_heating','air_layer','element_type','final_details'];
+ return base.filter(k=>k==='final_details'||wizardInput(wizard.form,k));
+}
+function wizardVisibleSteps(){
+ return wizard.steps.filter(k=>!(wizardValue(wizard.form,'insulation')==='Afwezig'||wizardValue(wizard.form,'insulation')==='Geen')||!['insulation_thickness_mm','insulation_location','insulation_interruption'].includes(k));
+}
+function wizardSuggestedName(){
+ const f=wizard.form,k=wizard.kind;
+ const fin=wizardValue(f,'finish');const bound=wizardValue(f,'boundary');
+ if(k==='facade')return ['Muur',fin,bound].filter(Boolean).join(' ');
+ if(k==='hellend_dak')return ['Hellend dak',fin].filter(Boolean).join(' ');
+ if(k==='plat_dak')return ['Plat dak',fin].filter(Boolean).join(' ');
+ if(k==='plafond')return ['Plafond',bound].filter(Boolean).join(' ');
+ return ['Vloer',bound].filter(Boolean).join(' ');
+}
+function wizardStart(form,kind){
+ const host=$(form.id.replace('-form','-wizard'));
+ wizard={form,kind,host,steps:[],index:0,otherValues:{},otherSelections:{}};
+ wizard.steps=wizardSteps(kind);
+ // For new records, replace the old long form with a single-step tile interface.
+ form.classList.add('epc-form-wizard-hidden');host.classList.remove('hidden');
+ wizardRender();
+}
+function wizardStop(form){
+ if(wizard?.form===form)wizard=null;
+ form.classList.remove('epc-form-wizard-hidden');
+ $(form.id.replace('-form','-wizard')).classList.add('hidden');
+}
+function wizardSet(key,value){
+ const el=wizardInput(wizard.form,key);if(!el)return;
+ // Custom "Andere" text is saved in the underlying field where possible.
+ // Unknown select options are inserted explicitly, not silently discarded.
+ if(el.tagName==='SELECT'&&![...el.options].some(o=>o.value===value)){
+  const o=document.createElement('option');o.value=value;o.textContent=value;el.append(o);
+ }
+ el.value=value;
+ if(key==='insulation'&&(value==='Afwezig'||value==='Geen')){
+  for(const dep of ['insulation_thickness_mm','insulation_location','insulation_interruption']){
+   const input=wizardInput(wizard.form,dep);if(input)input.value='';
+  }
+ }
+}
+function wizardAdvance(){
+ const visible=wizardVisibleSteps();const current=wizard.steps[wizard.index];
+ const i=visible.indexOf(current);
+ wizard.index=wizard.steps.indexOf(visible[Math.min(i+1,visible.length-1)]);
+ wizardRender();
+}
+function wizardBack(){
+ const visible=wizardVisibleSteps();const current=wizard.steps[wizard.index];
+ const i=visible.indexOf(current);
+ if(i>0){wizard.index=wizard.steps.indexOf(visible[i-1]);wizardRender()}
+ else wizardStop(wizard.form);
+}
+function wizardRender(){
+ if(!wizard)return;
+ const {host,form,kind}=wizard;host.replaceChildren();
+ const visible=wizardVisibleSteps();
+ if(!visible.includes(wizard.steps[wizard.index]))wizard.index=wizard.steps.indexOf(visible[0]);
+ const key=wizard.steps[wizard.index],el=key==='final_details'?null:wizardInput(form,key);
+ const step=document.createElement('div');step.className='epc-wizard-step';
+ const progress=document.createElement('div');progress.className='epc-wizard-progress';
+ progress.textContent=`${visible.indexOf(key)+1} / ${visible.length}`;
+ const title=document.createElement('h2');title.textContent=key==='final_details'?'Andere':(WIZ_LABELS[key]||key);
+ const top=document.createElement('div');top.className='epc-wizard-top';
+ const back=document.createElement('button');back.type='button';back.className='epc-wizard-back';
+ // Reuse the exact previous-arrow SVG and button size used elsewhere in EPC Buddy.
+ const backIcon=document.createElement('img');backIcon.src='ico/vorige-pijl.svg';backIcon.alt='';
+ back.append(backIcon);back.setAttribute('aria-label','Vorige stap');back.onclick=wizardBack;
+ top.append(back,title,progress);step.append(top);
+ const options=key==='finish'?WIZ_FINISH[kind]:
+ key==='dormer_count'?['Geen','1','2','3','4','5']:
+ el?.tagName==='SELECT'?[...el.options].filter(o=>o.value!==''&&!o.disabled).map(o=>({value:o.value,label:o.textContent.trim()})):null;
+ if(options){
+  const grid=document.createElement('div');grid.className='epc-wizard-grid';
+  for(const item of options){
+   const value=typeof item==='string'?item:item.value;
+   const label=typeof item==='string'?item:item.label;
+   const button=document.createElement('button');button.type='button';button.className='epc-wizard-choice';
+   if((wizard.otherSelections[key]===value)||(wizardValue(form,key)===value))button.classList.add('selected');
+   button.textContent=label;
+   button.onclick=()=>{
+    // 'Ja, andere' is a complete protocol option for the air layer:
+    // no additional free-text details should be requested.
+    if(key==='air_layer'&&value.toLocaleLowerCase('nl-BE')==='ja, andere'){
+     delete wizard.otherSelections[key];
+     wizardSet(key,value);
+     wizardAdvance();
+     return;
+    }
+    if(value==='Andere'||value==='Ja, andere'){
+     wizard.otherSelections[key]=value;wizardRender();return;
+    }
+    delete wizard.otherSelections[key];
+    wizardSet(key,key==='dormer_count'&&value==='Geen'?'0':value);wizardAdvance();
+   };
+   grid.append(button);
+  }
+  // Keep the 'Andere' tile selected and its text visible when navigating back.
+  step.append(grid);
+  if(wizard.otherSelections[key]&&!(key==='air_layer'&&wizard.otherSelections[key].toLocaleLowerCase('nl-BE')==='ja, andere'))wizardOther(key,wizard.otherSelections[key],step);
+ }else if(key==='final_details'){
+  wizardFinalDetails(step,form);
+ }else{
+  const area=key==='remarks';
+  const input=document.createElement(area?'textarea':'input');
+  if(!area){input.type=el?.type==='number'?'number':'text';if(input.type==='number')input.min='0'}
+  input.className='epc-wizard-input';input.value=key==='name'?(wizard.otherValues.manualName||wizardSuggestedName()):wizardValue(form,key);
+  input.placeholder=key==='name'?'Naam van de constructie':WIZ_LABELS[key];
+  if(area)input.rows=4;
+  if(key==='insulation_thickness_mm'){
+   // 'Onbekend' is a deliberate empty thickness, not an invented measurement.
+   const unknown=document.createElement('button');unknown.type='button';
+   unknown.className='epc-wizard-unknown'+(wizard.otherValues.thicknessUnknown?' selected':'');
+   unknown.textContent='ONBEKEND';
+   unknown.onclick=()=>{wizard.otherValues.thicknessUnknown=true;wizardSet(key,'');wizardAdvance()};
+   step.append(unknown);
+   input.addEventListener('input',()=>{wizard.otherValues.thicknessUnknown=false;unknown.classList.remove('selected')});
+   // Unit appears next to the field, not inside its numeric value.
+   const row=document.createElement('div');row.className='epc-wizard-measure';
+   const unit=document.createElement('span');unit.textContent='MM';row.append(input,unit);step.append(row);
+  }else step.append(input);
+  if(key==='dormer_count')input.inputMode='numeric';
+  const next=document.createElement('button');next.type='button';next.className='epc-wizard-next';
+  next.textContent=key==='name'?'Opslaan':'Volgende';
+  next.onclick=()=>{
+   if(key==='name'&&!input.value.trim()){input.focus();return}
+   wizardSet(key,input.value.trim());
+   if(key==='name'){
+    const activeForm=form;wizardStop(activeForm);
+    activeForm.requestSubmit();
+   }else wizardAdvance();
+  };
+  step.append(next);
+  if(key==='name')input.addEventListener('input',()=>{wizard.otherValues.manualName=input.value});
+ }
+ host.append(step);
+}
+// Names identify shared construction definitions within a dossier. Validate before
+// leaving the wizard so a duplicate never silently creates another definition.
+// This is a UX validation, not a database uniqueness guarantee: concurrent saves
+// must ultimately be protected by a unique database constraint/RPC.
+async function wizardNameAlreadyExists(name){
+ if(!activeDossier)throw new Error('Geen actief dossier.');
+ const table=wizard.kind==='facade'?'epc_facade_constructions':'epc_envelope_constructions';
+ let query=db.from(table).select('id,name').eq('dossier_id',activeDossier.id).is('deleted_at',null);
+ if(wizard.kind!=='facade')query=query.eq('element_kind',wizard.kind);
+ const {data,error}=await query;
+ if(error)throw error;
+ const normalize=value=>String(value||'').trim().normalize('NFKC').toLocaleLowerCase('nl-BE');
+ const proposed=normalize(name);
+ return (data||[]).some(item=>normalize(item.name)===proposed);
+}
+// Last wizard page: renovation year and remarks together, plus an editable
+// automatically suggested construction name. Nothing is persisted until Opslaan.
+function wizardFinalDetails(step,form){
+ const group=document.createElement('div');group.className='epc-wizard-final';
+ const fields=[
+  {key:'renovation_reference_year',label:'REFERENTIEJAAR RENOVATIE',type:'number'},
+  {key:'remarks',label:'OPMERKING',type:'textarea'},
+  {key:'name',label:'NAAM CONSTRUCTIE',type:'text'}
+ ];
+ const controls={};
+ for(const item of fields){
+  const label=document.createElement('label');label.textContent=item.label;
+  const input=document.createElement(item.type==='textarea'?'textarea':'input');
+  if(item.type!=='textarea')input.type=item.type;
+  if(item.type==='number'){input.min='0';input.max='9999';input.inputMode='numeric'}
+  input.className='epc-wizard-final-input';
+  input.value=item.key==='name'?(wizard.otherValues.manualName||wizardSuggestedName()):wizardValue(form,item.key);
+  if(item.key==='name')input.addEventListener('input',()=>{wizard.otherValues.manualName=input.value;input.removeAttribute('aria-invalid');group.querySelector('.epc-wizard-name-error')?.remove()});
+  label.append(input);group.append(label);controls[item.key]=input;
+ }
+ const actions=document.createElement('div');actions.className='epc-wizard-final-actions';
+ const cancel=document.createElement('button');cancel.type='button';cancel.className='epc-wizard-cancel';cancel.textContent='Annuleren';cancel.onclick=()=>wizardStop(form);
+ const save=document.createElement('button');save.type='button';save.className='epc-wizard-next';save.textContent='Opslaan';
+ save.onclick=async()=>{
+  const proposedName=controls.name.value.trim();
+  if(!proposedName){controls.name.focus();return}
+  // Keep the name field visible when an existing definition has the same name.
+  // Do not stop the wizard or submit the underlying form in that case.
+  save.disabled=true;
+  const previousError=group.querySelector('.epc-wizard-name-error');
+  if(previousError)previousError.remove();
+  controls.name.removeAttribute('aria-invalid');
+  try{
+   if(await wizardNameAlreadyExists(proposedName)){
+    const warning=document.createElement('p');
+    warning.className='epc-wizard-name-error';warning.setAttribute('role','alert');
+    warning.textContent='Er bestaat al een constructie met deze naam in dit dossier. Pas de naam aan.';
+    controls.name.parentElement.after(warning);
+    controls.name.setAttribute('aria-invalid','true');
+    controls.name.focus();
+    return;
+   }
+  }catch(error){err(error);return}
+  finally{save.disabled=false}
+  for(const item of fields)wizardSet(item.key,controls[item.key].value.trim());
+  const extras=Object.entries(wizard.otherSelections)
+   .filter(([key])=>key!=='finish'&&wizard.otherValues[key]?.trim())
+   .map(([key])=>`${WIZ_LABELS[key]||key} – Andere: ${wizard.otherValues[key].trim()}`);
+  if(extras.length){
+   const remarks=wizardInput(form,'remarks');
+   if(remarks)remarks.value=[remarks.value,...extras].filter(Boolean).join('\n');
+  }
+  wizardStop(form);form.requestSubmit();
+ };
+ actions.append(cancel,save);group.append(actions);step.append(group);
+}
+function wizardOther(key,value,step){
+ // The free-text input belongs immediately below the choice tiles. It must
+ // survive navigation, and its corresponding 'Andere' tile stays selected.
+ const old=step.querySelector('.epc-wizard-other');if(old)old.remove();
+ const box=document.createElement('div');box.className='epc-wizard-other';
+ const input=document.createElement('input');input.type='text';input.maxLength=120;
+ input.className='epc-wizard-input';
+ input.placeholder='Geef de andere uitvoering op';input.setAttribute('aria-label','Andere uitvoering');
+ input.value=wizard.otherValues[key]||'';
+ input.addEventListener('input',()=>{wizard.otherValues[key]=input.value});
+ const next=document.createElement('button');next.type='button';next.className='epc-wizard-next';next.textContent='Volgende';
+ next.onclick=()=>{
+  const detail=input.value.trim();if(!detail){input.focus();return}
+  wizard.otherValues[key]=detail;
+  // Finishes have their own text column; other fixed protocol selections
+  // keep the canonical option and add the detail to remarks on save.
+  wizardSet(key,key==='finish'?detail:value);
+  wizardAdvance();
+ };
+ box.append(input,next);
+ const grid=step.querySelector('.epc-wizard-grid');
+ if(grid)grid.after(box);else step.append(box);
+}
+
+
 init();})();

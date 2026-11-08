@@ -570,3 +570,74 @@ main{padding-bottom:24px!important}
 }
 .epc-photo-tile>.epc-photo-stamp{display:none}
 .epc-list-loading{margin:22px auto;text-align:center;font-size:13px;color:#72889c}
+
+/* Step-by-step construction wizard: compact, touch-friendly, one decision at a time. */
+.epc-form-wizard-hidden{display:none!important}
+.epc-wizard{min-height:calc(100dvh - 190px);display:flex;flex-direction:column;padding:0 8px 18px}
+.epc-wizard.hidden{display:none!important}
+.epc-wizard-step{flex:1;display:flex;flex-direction:column;min-height:100%}
+.epc-wizard-top{display:flex;align-items:center;gap:10px;padding:12px 0}
+.epc-wizard-top h2{font-size:17px;flex:1;margin:0;color:#082e50}
+.epc-wizard-progress{color:#6f8799;font-size:12px;font-weight:700}
+.epc-wizard-back{width:42px;height:42px;border:0;border-radius:11px;background:#082e50;color:white;font-size:30px;line-height:1}
+.epc-wizard-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px;align-content:center;flex:1;padding:15px 0 38px}
+.epc-wizard-choice{min-height:74px;border:0;border-radius:7px;background:#d9f7e9;color:#12334c;padding:8px 4px;font-size:12px;font-weight:700;line-height:1.3;overflow-wrap:anywhere}
+.epc-wizard-choice.selected{background:#082e50;color:#fff}
+.epc-wizard-choice:focus-visible,.epc-wizard-next:focus-visible{outline:3px solid #2784c6;outline-offset:2px}
+.epc-wizard-input{width:100%;box-sizing:border-box;min-height:54px;margin:auto 0 20px;padding:12px;border:1px solid #a5d7be;border-radius:9px;background:#d9f7e9;color:#082e50;font:inherit}
+.epc-wizard textarea.epc-wizard-input{min-height:120px;resize:vertical}
+.epc-wizard-next{align-self:flex-end;margin:12px 0 18px;border:0;border-radius:8px;background:#082e50;color:#fff;padding:14px 24px;font-weight:700}
+.epc-wizard-other{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0 20px}
+.epc-wizard-other input{flex:1;min-width:130px;padding:12px;border:1px solid #a5d7be;border-radius:7px}
+.epc-wizard-other button{border:0;border-radius:7px;background:#082e50;color:#fff;padding:12px}
+@media(max-width:350px){.epc-wizard-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+/* Constructiewizard: reuse existing navigation button and SVG dimensions. */
+.epc-wizard-back{width:34px!important;height:34px!important;min-width:34px!important;min-height:34px!important;border-radius:10px!important;background:#082d4c!important;display:grid;place-items:center;padding:0!important}
+.epc-wizard-back img{display:block;width:11px;height:11px;object-fit:contain;margin:auto}
+/* Square, equal-width option tiles, with the selected tile in dark navy. */
+.epc-wizard-grid{grid-auto-rows:min-content;align-content:center}
+.epc-wizard-choice{aspect-ratio:1/1;min-height:0!important;width:100%;border-radius:4px!important;font-weight:800!important;text-transform:uppercase;font-size:clamp(10px,2.8vw,12px);padding:6px;display:grid;place-items:center}
+.epc-wizard-measure{display:flex;align-items:center;gap:12px;margin:auto 0 20px}
+.epc-wizard-measure .epc-wizard-input{flex:1;min-width:0;margin:0}
+.epc-wizard-measure>span{font-weight:800;color:#082e50}
+.epc-wizard-final{display:flex;flex-direction:column;gap:18px;padding:20px 0 12px;flex:1}
+.epc-wizard-final label{display:flex;flex-direction:column;gap:8px;color:#082e50;font-size:12px;font-weight:800}
+.epc-wizard-final-input{display:block;width:100%;min-height:45px;padding:11px;border:1px solid #a5d7be;border-radius:7px;background:#d9f7e9;color:#082e50;font:inherit;box-sizing:border-box}
+.epc-wizard-final textarea{min-height:105px;resize:vertical}
+.epc-wizard-final-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:auto;padding-top:20px}
+.epc-wizard-final-actions button{min-width:100px;min-height:42px;margin:0;border-radius:7px;font-weight:700}
+.epc-wizard-cancel{background:#fff;border:1px solid #cbdbe5;color:#082e50}
+
+/* Wizard: white content card consistent with all EPC Buddy detail pages. */
+.epc-wizard{background:#fff;border-radius:15px;padding:12px 14px 22px;min-height:calc(100dvh - 225px);box-sizing:border-box}
+.epc-wizard-step{min-height:0}
+.epc-wizard-grid{padding:18px 0;flex:1;align-content:center}
+.epc-wizard-other{order:2;display:flex;flex-direction:column;gap:10px;margin:0 0 16px}
+.epc-wizard-other .epc-wizard-input{margin:0;background:#fff;border:1px solid #a5d7be;min-height:48px}
+.epc-wizard-other .epc-wizard-next{margin:0;align-self:flex-end}
+.epc-wizard-unknown{width:100%;min-height:48px;border:0;border-radius:5px;background:#d9f7e9;color:#082e50;font-weight:800;margin:auto 0 12px}
+.epc-wizard-unknown.selected{background:#082e50;color:#fff}
+.epc-wizard-step:has(.epc-wizard-other) .epc-wizard-grid{flex:0 0 auto;align-content:start}
+.epc-wizard-step:has(.epc-wizard-other) .epc-wizard-choice{aspect-ratio:1/1}
+
+/* The unknown-thickness choice has exactly the same square geometry as all
+   other wizard choices, and never stretches across the full content width. */
+.epc-wizard-unknown{
+ width:calc((100% - 10px)/3)!important;
+ aspect-ratio:1/1;
+ min-height:0!important;
+ flex:none;
+ align-self:flex-start;
+ margin:auto 0 12px!important;
+ padding:6px;
+ border-radius:4px!important;
+ display:grid;
+ place-items:center;
+ font-size:clamp(10px,2.8vw,12px);
+ font-weight:800;
+}
+@media(max-width:350px){.epc-wizard-unknown{width:calc((100% - 5px)/2)!important}}
+/* Error message stays on the final name step so it can be corrected in place. */
+.epc-wizard-name-error{font-size:12px;font-weight:700;color:#b42332;margin:0 0 8px}
+.epc-wizard-final-input[aria-invalid="true"]{border:2px solid #b42332;background:#fff}
