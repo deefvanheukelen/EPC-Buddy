@@ -8,7 +8,7 @@
 <title>
    EPC Buddy
   </title>
-<link href="css/styles.css?v=mobile-nav-2" rel="stylesheet"/>
+<link href="css/styles.css?v=photo-speed-1" rel="stylesheet"/>
 </head>
 <body>
 <header>
@@ -391,13 +391,17 @@
 </aside>
 <button aria-label="Naar boven" class="scroll-top hidden" id="scroll-top" title="Naar boven" type="button"><img alt="" src="ico/scroll-to-top.svg"/></button>
 
+<!-- Niet-blokkerend bij korte bewerkingen; zichtbaar bij trage netwerkacties. -->
+<div id="epc-loading" class="epc-loading hidden" role="status" aria-live="polite" aria-label="Even geduld">
+ <div class="epc-loading-card"><div class="epc-loading-spinner" aria-hidden="true"></div><span id="epc-loading-text">Even geduld…</span></div>
+</div>
 <div aria-live="polite" id="notice" role="status">
 </div>
 </main>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js">
 </script>
 <script src="js/config.js?v=1"></script>
-<script src="js/app.js?v=mobile-nav-2">
+<script src="js/app.js?v=photo-speed-1">
 </script>
 </body>
 </html>

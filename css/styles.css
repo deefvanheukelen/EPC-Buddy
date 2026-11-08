@@ -529,3 +529,32 @@ main{padding-bottom:24px!important}
 @media(max-width:640px){main{padding-bottom:22px!important}.floating-add{bottom:20px}}
 /* Photo action buttons sit at the bottom of the detail panel, not above a footer. */
 .epc-photo-actions{padding-bottom:12px}
+
+/* EPC Buddy: één gedeelde positie voor de + en cameraknop, zonder oud footer-menu.
+   De pagina vult het scherm, maar groeit mee wanneer er veel constructies/foto's zijn. */
+#facade-page,#envelope-page,#installation-page{
+  min-height:calc(100dvh - 100px)!important;
+  padding-bottom:8px!important;
+}
+#facade-page .epc-section-content,#envelope-page .epc-section-content,#installation-page .epc-section-content{
+  flex:1 0 auto!important;
+  min-height:0!important;
+}
+#facade-page .epc-photo-actions,#envelope-page .epc-photo-actions,#installation-page .epc-photo-actions{
+  position:sticky!important;
+  bottom:8px!important;
+  margin:auto 0 0!important;
+  padding:8px 4px 2px!important;
+  background:var(--bg,#eaf2f7);
+}
+/* Fototijdstempel: datum en tijd van registratie op de server (created_at).
+   Dit is niet noodzakelijk het oorspronkelijke EXIF-opnametijdstip. */
+.epc-photo-stamp{display:block;font-size:10px;color:#334e68;margin-top:3px;white-space:nowrap}
+.epc-photo-caption{display:block;font-size:9px;color:#71869a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* Gedeelde, toegankelijke overlay voor tragere opslag- en laadbewerkingen. */
+.epc-loading{position:fixed;inset:0;z-index:9998;display:grid;place-items:center;background:rgba(236,244,249,.55);backdrop-filter:blur(1.5px)}
+.epc-loading.hidden{display:none!important}
+.epc-loading-card{display:flex;align-items:center;gap:12px;background:rgba(255,255,255,.96);border:1px solid #d3e3ec;border-radius:12px;padding:15px 20px;box-shadow:0 5px 24px rgba(8,46,80,.14);color:#082e50;font-weight:650;font-size:13px}
+.epc-loading-spinner{width:24px;height:24px;border:3px solid #c5d8e5;border-top-color:#0b3454;border-radius:50%;animation:epc-spin .8s linear infinite}
+@keyframes epc-spin{to{transform:rotate(360deg)}}
+@media(prefers-reduced-motion:reduce){.epc-loading-spinner{animation:none;border-top-color:#0b3454}}

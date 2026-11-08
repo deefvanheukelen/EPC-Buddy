@@ -467,7 +467,7 @@ const installationDefinitions={
   I('year','Referentiejaar fabricage','number'),I('energy','Energiedrager'),
   I('tank','Voorraadvat (L)','number'),I('pipes','Gewone leidingen','select',['< 5 m','≥ 5 m'])],
  ventilation_unit:[I('brand','Merk'),I('model','Type / model'),I('type','Type ventilatie'),I('control','Regeling')],
- room_ventilation:[I('room','Ruimte'),I('type','Ventilatietype','select',['Geen','Natuurlijke toevoer','Natuurlijke afvoer','Mechanische toevoer','Mechanische afvoer'])],
+ room_ventilation:[I('room','Ruimte'),I('room_type','Ruimtetype','select',['Natte ruimte: keuken/bad of douche','Natte ruimte: andere','Verblijfsruimte','Andere']),I('type','Ventilatietype','select',['Geen','Natuurlijke toevoer','Natuurlijke afvoer','Mechanische toevoer','Mechanische afvoer'])],
  solar_thermal:[I('area','Oppervlakte paneel (m²)','number'),I('quantity','Aantal','number'),I('roof','Ligging (dak)','roof-link')],
  pv:[I('area','Oppervlakte paneel (m²)','number'),I('quantity','Aantal','number'),I('roof','Ligging (dak)','roof-link')],
  lighting:[I('source','Type lichtbron'),I('presence','Regeling aan-/afwezigheid'),I('daylight','Regeling i.f.v. daglicht')]
@@ -578,6 +578,18 @@ const photoTargets={
  'envelope-construction-add':()=>activeEnvelopeRecord&&{kind:'envelope',id:activeEnvelopeRecord.id,name:activeEnvelope,page:'envelope-page'},
  'installation-add':()=>activeInstallationSection&&{kind:'installation',id:activeInstallationSection.id,name:activeInstallationSection.name,page:'installation-page'}
 };
+// Ref-counted loader: parallel requests mogen elkaars overlay niet te vroeg sluiten.
+let epcLoadingCount=0,epcLoadingTimer=null;
+function beginEpcLoading(message='Even geduld…'){
+ epcLoadingCount++;$('epc-loading-text').textContent=message;
+ clearTimeout(epcLoadingTimer);
+ // Snelle acties tonen geen flitsende overlay.
+ epcLoadingTimer=setTimeout(()=>{if(epcLoadingCount>0)show('epc-loading',true)},240);
+}
+function endEpcLoading(){
+ epcLoadingCount=Math.max(0,epcLoadingCount-1);
+ if(epcLoadingCount===0){clearTimeout(epcLoadingTimer);show('epc-loading',false)}
+}
 let photoUploadBusy=false;
 const photoInput=$('epc-camera-input');
 for(const button of document.querySelectorAll('[data-photo-for]')){
@@ -590,40 +602,80 @@ function photoBase(name){
  return 'pic_'+String(name).normalize('NFKD').replace(/[\u0300-\u036f]/g,'')
   .replace(/[^a-zA-Z0-9]+/g,'_').replace(/^_+|_+$/g,'');
 }
-async function loadSectionPhotos(kind,targetId,page){
+// Fotogalerij: 1 databaseaanvraag + 1 batchaanvraag voor alle tijdelijke foto-URL's.
+// Geen serieel wachten per thumbnail: dat vertraagde de mobiele weergave sterk.
+const epcPhotoCache=new Map();
+const epcPhotoLoads=new Map();
+function formatPhotoTimestamp(value){
+ if(!value)return 'Datum onbekend';
+ const d=new Date(value);return Number.isNaN(d.getTime())?'Datum onbekend':
+  new Intl.DateTimeFormat('nl-BE',{dateStyle:'short',timeStyle:'short'}).format(d);
+}
+async function loadSectionPhotos(kind,targetId,page,{force=false}={}){
  if(!activeDossier)return;
  const host=$(page+'-photos');if(!host)return;
- const dossierId=activeDossier.id;
- const {data,error}=await db.from('epc_section_photos').select('id,filename,storage_path,created_at')
-  .eq('dossier_id',dossierId).eq('section_kind',kind).eq('section_id',targetId)
-  .is('deleted_at',null).order('created_at',{ascending:true});
- if(error){err(error);return}
- host.replaceChildren();
- for(const photo of data||[]){
-  const {data:signed,error:signError}=await db.storage.from(PHOTO_BUCKET).createSignedUrl(photo.storage_path,600);
-  if(signError){err(signError);continue}
-  // Ignore late responses after navigating to a different dossier.
-  if(activeDossier?.id!==dossierId)return;
+ const dossierId=activeDossier.id,cacheKey=`${dossierId}:${kind}:${targetId}`;
+ const existing=epcPhotoCache.get(cacheKey);
+ if(existing && !force && existing.expires>Date.now()){
+  renderSectionPhotos(host,existing.photos,kind,targetId,page,dossierId);return;
+ }
+ // Vermijd dubbele netwerkverzoeken bij snel terug- en vooruitnavigeren.
+ if(epcPhotoLoads.has(cacheKey))return epcPhotoLoads.get(cacheKey);
+ const task=(async()=>{
+  beginEpcLoading('Foto’s ophalen…');
+  try{
+   const {data,error}=await db.from('epc_section_photos')
+    .select('id,filename,storage_path,created_at')
+    .eq('dossier_id',dossierId).eq('section_kind',kind).eq('section_id',targetId)
+    .is('deleted_at',null).order('created_at',{ascending:true});
+   if(error)throw error;
+   const photos=data||[];
+   if(photos.length){
+    const {data:urls,error:signError}=await db.storage.from(PHOTO_BUCKET)
+      .createSignedUrls(photos.map(p=>p.storage_path),600);
+    if(signError)throw signError;
+    const urlByPath=new Map((urls||[]).map((u,i)=>[photos[i].storage_path,u.signedUrl]));
+    for(const photo of photos)photo.url=urlByPath.get(photo.storage_path);
+   }
+   epcPhotoCache.set(cacheKey,{photos,expires:Date.now()+8*60*1000});
+   if(activeDossier?.id===dossierId)renderSectionPhotos(host,photos,kind,targetId,page,dossierId);
+  }catch(error){err(error)}finally{endEpcLoading()}
+ })();
+ epcPhotoLoads.set(cacheKey,task);
+ try{await task}finally{epcPhotoLoads.delete(cacheKey)}
+}
+function renderSectionPhotos(host,photos,kind,targetId,page,dossierId){
+ const fragment=document.createDocumentFragment();
+ for(const photo of photos){
+  if(!photo.url)continue;
   const tile=document.createElement('div');tile.className='epc-photo-tile';
   const open=document.createElement('button');open.type='button';open.className='epc-photo-open';
-  const img=document.createElement('img');img.src=signed.signedUrl;img.alt=photo.filename;img.loading='lazy';
-  open.append(img);open.onclick=()=>openPhoto(photo.filename,signed.signedUrl);
+  const img=document.createElement('img');img.src=photo.url;img.alt=photo.filename;
+  img.loading='eager';img.decoding='async';
+  open.append(img);open.onclick=()=>openPhoto(photo.filename,photo.url,photo.created_at);
   const del=document.createElement('button');del.type='button';del.className='epc-photo-delete';
   del.title='Foto verwijderen';del.setAttribute('aria-label','Foto '+photo.filename+' verwijderen');
   const delIcon=document.createElement('img');delIcon.src='ico/delete.svg';delIcon.alt='';del.append(delIcon);
   del.onclick=async()=>{
    if(!confirm('Foto '+photo.filename+' verwijderen?'))return;
-   const {error:removeError}=await db.from('epc_section_photos')
-    .update({deleted_at:new Date().toISOString()}).eq('id',photo.id).eq('dossier_id',dossierId);
-   if(removeError)return err(removeError);
-   await loadSectionPhotos(kind,targetId,page);note('Foto verwijderd.');
+   beginEpcLoading('Foto verwijderen…');
+   try{
+    const {error}=await db.from('epc_section_photos')
+     .update({deleted_at:new Date().toISOString()}).eq('id',photo.id).eq('dossier_id',dossierId);
+    if(error)throw error;
+    epcPhotoCache.delete(`${dossierId}:${kind}:${targetId}`);
+    await loadSectionPhotos(kind,targetId,page,{force:true});note('Foto verwijderd.');
+   }catch(error){err(error)}finally{endEpcLoading()}
   };
-  const caption=document.createElement('span');caption.textContent=photo.filename;
-  tile.append(open,del,caption);host.append(tile);
+  const stamp=document.createElement('span');stamp.className='epc-photo-stamp';
+  stamp.textContent=formatPhotoTimestamp(photo.created_at);
+  const caption=document.createElement('span');caption.className='epc-photo-caption';caption.textContent=photo.filename;
+  tile.append(open,del,stamp,caption);fragment.append(tile);
  }
+ host.replaceChildren(fragment);
 }
-function openPhoto(name,url){
- $('epc-photo-viewer-image').src=url;$('epc-photo-viewer-name').textContent=name;
+function openPhoto(name,url,timestamp){
+ $('epc-photo-viewer-image').src=url;$('epc-photo-viewer-name').textContent=name+' · '+formatPhotoTimestamp(timestamp);
  show('epc-photo-viewer');document.body.classList.add('epc-viewing-photo');
 }
 function closePhoto(){show('epc-photo-viewer',false);$('epc-photo-viewer-image').removeAttribute('src');document.body.classList.remove('epc-viewing-photo')}
@@ -635,7 +687,7 @@ photoInput.onchange=async()=>{
  if(!file||!target||photoUploadBusy||!activeDossier||!workspace)return;
  if(!file.type.startsWith('image/'))return note('Selecteer een foto.');
  if(file.size>20*1024*1024)return note('Foto mag maximaal 20 MB zijn.');
- photoUploadBusy=true;
+ photoUploadBusy=true;beginEpcLoading('Foto opslaan…');
  try{
   const dossierId=activeDossier.id;
   const {data:existing,error:listError}=await db.from('epc_section_photos').select('filename')
@@ -654,8 +706,9 @@ photoInput.onchange=async()=>{
    dossier_id:dossierId,section_kind:target.kind,section_id:target.id,filename,storage_path:path,content_type:file.type,size_bytes:file.size
   });
   if(metaError)throw metaError;
-  await loadSectionPhotos(target.kind,target.id,target.page);note('Foto opgeslagen: '+filename);
- }catch(e){err(e)}finally{photoUploadBusy=false;photoInput.value=''}
+  epcPhotoCache.delete(`${dossierId}:${target.kind}:${target.id}`);
+  await loadSectionPhotos(target.kind,target.id,target.page,{force:true});note('Foto opgeslagen: '+filename);
+ }catch(e){err(e)}finally{photoUploadBusy=false;photoInput.value='';endEpcLoading()}
 };
 
 function refreshScrollTop(){show('scroll-top',scrollPosition()>170)}
