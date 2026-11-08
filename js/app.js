@@ -98,10 +98,29 @@ function dossierType(d){const t=String(d.dossier_type||d.type||d.certificate_typ
 function render(){const q=$('search').value.toLocaleLowerCase(),year=$('year-filter').value,types=[...document.querySelectorAll('.filter-check input:checked')].map(c=>c.value);let results=items.filter(d=>(year==='all'||String(d.inspection_date||'').startsWith(year))&&types.includes(dossierType(d))&&[d.dossier_number,d.client_name,...Object.values(d.property_address||{})].join(' ').toLocaleLowerCase().includes(q));const dir=$('sort-direction').value==='asc'?1:-1;results.sort((a,b)=>dir*(sortBy==='name'?String(a.dossier_number||'').localeCompare(String(b.dossier_number||''),'nl',{numeric:true}):String(a.inspection_date||a.updated_at||'').localeCompare(String(b.inspection_date||b.updated_at||''))));$('dossiers').replaceChildren();if(!results.length){const empty=document.createElement('div');empty.className='empty-state';empty.innerHTML='<span class="empty-icon">▤</span><p>Geen dossiers gevonden.<br>Maak een dossier aan.</p>';$('dossiers').append(empty);return}results.forEach(d=>{const row=document.createElement('button');row.type='button';row.className='dossier-row';row.onclick=()=>open(d.id);const type=dossierType(d),tag=document.createElement('span');tag.className='type-tag type-'+type;tag.textContent=type;const txt=document.createElement('span');txt.className='dossier-row-text';const strong=document.createElement('strong');strong.textContent=d.dossier_number?'Dossier '+d.dossier_number:'Dossier zonder nummer';const address=document.createElement('small');const a=d.property_address||{};address.textContent=[a.street,a.number,[a.postal,a.city].filter(Boolean).join(' ')].filter(Boolean).join(', ');const date=document.createElement('small');date.textContent='Bezoek: '+(d.inspection_date?new Date(d.inspection_date+'T12:00:00').toLocaleDateString('nl-BE'):'—');txt.append(strong,address,date);const chevron=document.createElement('span');chevron.className='row-chevron';chevron.textContent='›';row.append(tag,txt,chevron);$('dossiers').append(row)})}
 const f=$('dossier-form');function field(name){return f.elements.namedItem(name)}
 function edit(d){current=d?.id||null;f.reset();$('editor-title').textContent=d?'Dossier '+(d.dossier_number||''):'Nieuw dossier';show('delete-dossier',!!d);$('back').setAttribute('aria-label',d?'Terug naar dossier':'Terug naar dossiers');screen('editor');if(d){for(const k of ['dossier_number','inspection_date','client_kind','client_name','client_vat_number','client_phone','client_email'])field(k).value=d[k]||'';for(const [prefix,obj] of [['client',d.client_address],['property',d.property_address]])for(const k of ['street','number','postal','city'])field(prefix+'_'+k).value=obj?.[k]||'';$('same').checked=!!d.client_address_same_as_property;field('dossier_type').value=d.dossier_type||'RES'}toggle()}
+let dossierOpenVersion=0;
 async function open(id){
+ const version=++dossierOpenVersion;
+ // Clear the previous dossier identity as well as its rendered content.
+ // This prevents stale IDs from being persisted during navigation.
+ activeDossier=null;
+ activeFacade=null;
+ activeEnvelopeRecord=null;
+ activeInstallationSection=null;
+ $('facade-list').replaceChildren();
+ $('detail-title').textContent='Dossier laden…';
+ screen('detail');
+ beginEpcLoading('Dossier laden…');
+ try {
  const {data,error}=await db.from('epc_dossiers').select('*').eq('id',id).eq('workspace_id',workspace).single();
- if(error)return err(error);
- activeDossier=data;screen('detail');renderDetail();await loadFacades();window.scrollTo({top:0,behavior:'instant'});
+ if(version!==dossierOpenVersion)return;
+ if(error)throw error;
+ activeDossier=data;
+ // A fresh dossier must start from an empty list, never reuse the previous DOM.
+ $('facade-list').replaceChildren();
+ screen('detail');renderDetail();await loadFacades();window.scrollTo({top:0,behavior:'instant'});
+ } catch(error){if(version===dossierOpenVersion){err(error);screen('home')}}
+ finally {endEpcLoading()}
 }
 function renderDetail(){
  const d=activeDossier;if(!d)return;
@@ -130,26 +149,41 @@ function makeOverviewRow(name,subtitle,onOpen,onDelete){
  const img=document.createElement('img');img.src='ico/delete.svg';img.alt='';del.append(img);
  del.onclick=onDelete;wrapper.append(row,del);return wrapper;
 }
+let overviewRequestVersion=0;
 async function loadFacades(){
  if(!activeDossier)return;
- const {data,error}=await db.from('epc_facades').select('id,name,remarks').eq('dossier_id',activeDossier.id).is('deleted_at',null).order('created_at',{ascending:true});
- if(error){err(error);return}
- const {data:envelopes,error:envelopeError}=await db.from('epc_envelope_elements')
-  .select('*').eq('dossier_id',activeDossier.id).is('deleted_at',null).order('created_at',{ascending:true});
- if(envelopeError){err(envelopeError);return}
- const {data:envelopeChildren,error:childError}=await db.from('epc_envelope_constructions').select('envelope_id').eq('dossier_id',activeDossier.id).is('deleted_at',null);
- if(childError){err(childError);return}
- const envelopeCounts=new Map();for(const c of envelopeChildren||[])envelopeCounts.set(c.envelope_id,(envelopeCounts.get(c.envelope_id)||0)+1);
- const {data:installationSections,error:installationError}=await db.from('epc_installation_sections').select('*').eq('dossier_id',activeDossier.id).is('deleted_at',null);
- if(installationError)return err(installationError);
- const {data:installationEntries,error:installationEntriesError}=await db.from('epc_installation_entries').select('section_id').eq('dossier_id',activeDossier.id).is('deleted_at',null);
- if(installationEntriesError)return err(installationEntriesError);
- const installationCounts=new Map();for(const x of installationEntries||[])installationCounts.set(x.section_id,(installationCounts.get(x.section_id)||0)+1);
+ const dossierId=activeDossier.id;
+ const requestVersion=++overviewRequestVersion;
+ // Never show the previous dossier's tiles while a new dossier is loading.
+ const list=$('facade-list');
+ list.replaceChildren();
+ const loading=document.createElement('p');
+ loading.className='epc-list-loading';
+ loading.textContent='Onderdelen laden…';
+ list.append(loading);
+ beginEpcLoading('Dossier laden…');
+ try {
+ // Independent dossier queries run concurrently, reducing mobile round trips.
+ const [facadeResult,envelopeResult,childResult,sectionResult,entryResult,constructionResult]=await Promise.all([
+  db.from('epc_facades').select('id,name,remarks').eq('dossier_id',dossierId).is('deleted_at',null).order('created_at',{ascending:true}),
+  db.from('epc_envelope_elements').select('*').eq('dossier_id',dossierId).is('deleted_at',null).order('created_at',{ascending:true}),
+  db.from('epc_envelope_constructions').select('envelope_id').eq('dossier_id',dossierId).is('deleted_at',null),
+  db.from('epc_installation_sections').select('*').eq('dossier_id',dossierId).is('deleted_at',null),
+  db.from('epc_installation_entries').select('section_id').eq('dossier_id',dossierId).is('deleted_at',null),
+  db.from('epc_facade_constructions').select('facade_id').eq('dossier_id',dossierId).is('deleted_at',null)
+ ]);
+ if(requestVersion!==overviewRequestVersion || activeDossier?.id!==dossierId)return;
+ for(const result of [facadeResult,envelopeResult,childResult,sectionResult,entryResult,constructionResult]){
+  if(result.error)throw result.error;
+ }
+ const data=facadeResult.data,envelopes=envelopeResult.data,
+       envelopeChildren=childResult.data,installationSections=sectionResult.data,
+       installationEntries=entryResult.data,constructions=constructionResult.data;
+ const envelopeCounts=new Map();
+ for(const c of envelopeChildren||[])envelopeCounts.set(c.envelope_id,(envelopeCounts.get(c.envelope_id)||0)+1);
+ const installationCounts=new Map();
+ for(const x of installationEntries||[])installationCounts.set(x.section_id,(installationCounts.get(x.section_id)||0)+1);
  const host=$('facade-list');host.replaceChildren();
- // Gevelconstructies per gevel ophalen; niet afleiden uit de opmerking van de gevel.
- const {data:constructions, error:constructionError}=await db.from('epc_facade_constructions')
-   .select('facade_id').eq('dossier_id',activeDossier.id).is('deleted_at',null);
- if(constructionError){err(constructionError);return}
  const constructionCounts=new Map();
  for(const c of constructions||[])constructionCounts.set(c.facade_id,(constructionCounts.get(c.facade_id)||0)+1);
  // Gebruik de volgorde van het toevoegmenu, onafhankelijk van het aanmaakmoment.
@@ -182,8 +216,8 @@ async function loadFacades(){
   const bb=b.querySelector('.facade-text strong')?.textContent||'';
   return (itemOrder.get(aa.toLocaleLowerCase('nl-BE'))??999)-(itemOrder.get(bb.toLocaleLowerCase('nl-BE'))??999);
  }).forEach(node=>host.append(node));
+ } catch(error){if(activeDossier?.id===dossierId){$('facade-list').textContent='Onderdelen konden niet worden geladen.';err(error)}} finally { endEpcLoading(); }
 }
-
 // Gevelconstructies: lijst, uitschuifmenu en formulier, gekoppeld aan bestaande Supabase-tabellen.
 function closeConstructionDrawer(){show('construction-overlay',false);show('construction-drawer',false);document.body.classList.remove('construction-drawer-open')}
 function facadeHeader(){const el=$('facade-page-icon');el.replaceChildren(iconFor(activeFacade.name));$('facade-page-title').textContent=activeFacade.name}
@@ -615,6 +649,8 @@ async function loadSectionPhotos(kind,targetId,page,{force=false}={}){
  if(!activeDossier)return;
  const host=$(page+'-photos');if(!host)return;
  const dossierId=activeDossier.id,cacheKey=`${dossierId}:${kind}:${targetId}`;
+ // Clear stale thumbnails immediately, even before cached/remote data arrives.
+ host.replaceChildren();
  const existing=epcPhotoCache.get(cacheKey);
  if(existing && !force && existing.expires>Date.now()){
   renderSectionPhotos(host,existing.photos,kind,targetId,page,dossierId);return;
@@ -638,7 +674,11 @@ async function loadSectionPhotos(kind,targetId,page,{force=false}={}){
     for(const photo of photos)photo.url=urlByPath.get(photo.storage_path);
    }
    epcPhotoCache.set(cacheKey,{photos,expires:Date.now()+8*60*1000});
-   if(activeDossier?.id===dossierId)renderSectionPhotos(host,photos,kind,targetId,page,dossierId);
+   if(activeDossier?.id===dossierId &&
+      ((kind==='facade'&&activeFacade?.id===targetId)||
+       (kind==='envelope'&&activeEnvelopeRecord?.id===targetId)||
+       (kind==='installation'&&activeInstallationSection?.id===targetId)))
+     renderSectionPhotos(host,photos,kind,targetId,page,dossierId);
   }catch(error){err(error)}finally{endEpcLoading()}
  })();
  epcPhotoLoads.set(cacheKey,task);
@@ -652,7 +692,11 @@ function renderSectionPhotos(host,photos,kind,targetId,page,dossierId){
   const open=document.createElement('button');open.type='button';open.className='epc-photo-open';
   const img=document.createElement('img');img.src=photo.url;img.alt=photo.filename;
   img.loading='eager';img.decoding='async';
-  open.append(img);open.onclick=()=>openPhoto(photo.filename,photo.url,photo.created_at);
+  const overlayStamp=document.createElement('span');
+  overlayStamp.className='epc-photo-stamp';
+  overlayStamp.textContent=formatPhotoTimestamp(photo.created_at);
+  open.append(img,overlayStamp);
+  open.onclick=()=>openPhoto(photo.filename,photo.url,photo.created_at);
   const del=document.createElement('button');del.type='button';del.className='epc-photo-delete';
   del.title='Foto verwijderen';del.setAttribute('aria-label','Foto '+photo.filename+' verwijderen');
   const delIcon=document.createElement('img');delIcon.src='ico/delete.svg';delIcon.alt='';del.append(delIcon);
@@ -667,10 +711,8 @@ function renderSectionPhotos(host,photos,kind,targetId,page,dossierId){
     await loadSectionPhotos(kind,targetId,page,{force:true});note('Foto verwijderd.');
    }catch(error){err(error)}finally{endEpcLoading()}
   };
-  const stamp=document.createElement('span');stamp.className='epc-photo-stamp';
-  stamp.textContent=formatPhotoTimestamp(photo.created_at);
   const caption=document.createElement('span');caption.className='epc-photo-caption';caption.textContent=photo.filename;
-  tile.append(open,del,stamp,caption);fragment.append(tile);
+  tile.append(open,del,caption);fragment.append(tile);
  }
  host.replaceChildren(fragment);
 }

@@ -558,3 +558,15 @@ main{padding-bottom:24px!important}
 .epc-loading-spinner{width:24px;height:24px;border:3px solid #c5d8e5;border-top-color:#0b3454;border-radius:50%;animation:epc-spin .8s linear infinite}
 @keyframes epc-spin{to{transform:rotate(360deg)}}
 @media(prefers-reduced-motion:reduce){.epc-loading-spinner{animation:none;border-top-color:#0b3454}}
+
+/* Photo timestamp is part of the thumbnail itself, legible on light images. */
+.epc-photo-open{position:relative}
+.epc-photo-open .epc-photo-stamp{
+ position:absolute;bottom:4px;left:4px;right:4px;z-index:1;
+ display:block;margin:0;padding:2px 3px;border:0;background:transparent;
+ color:#fff;font-size:10px;font-weight:700;text-align:left;
+ text-shadow:0 1px 3px #000,0 0 5px rgba(0,0,0,.95);
+ pointer-events:none;
+}
+.epc-photo-tile>.epc-photo-stamp{display:none}
+.epc-list-loading{margin:22px auto;text-align:center;font-size:13px;color:#72889c}

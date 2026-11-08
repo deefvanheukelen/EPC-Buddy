@@ -8,7 +8,11 @@
 <title>
    EPC Buddy
   </title>
-<link href="css/styles.css?v=photo-speed-1" rel="stylesheet"/>
+<link href="css/styles.css?v=pwa-20261108" rel="stylesheet"/>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
 </head>
 <body>
 <header>
@@ -401,7 +405,16 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js">
 </script>
 <script src="js/config.js?v=1"></script>
-<script src="js/app.js?v=photo-speed-1">
+<script src="js/app.js?v=pwa-20261108">
 </script>
-</body>
+<script>
+/* Installable app shell. Registration never blocks login or dossier loading.
+   Only same-origin static assets are cached; Supabase responses are never cached. */
+if ('serviceWorker' in navigator && location.protocol === 'https:') {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js').catch(error =>
+      console.warn('Offline app-shell niet beschikbaar:', error));
+  });
+}
+</script></body>
 </html>
