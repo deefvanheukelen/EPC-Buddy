@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+
+<html lang="nl">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width,initial-scale=1" name="viewport"/>
+<meta content="#102a43" name="theme-color"/>
+<title>
+   EPC Buddy
+  </title>
+<link href="css/styles.css?v=gallery-layout-photos-fix-2" rel="stylesheet"/>
+</head>
+<body>
+<header>
+<div class="brand">
+<span aria-hidden="true" class="meter">
+     ⌂
+    </span>
+<div>
+<strong>
+      EPC
+      <em>
+       Buddy
+      </em>
+</strong>
+</div>
+</div>
+<button aria-label="Mijn dossiers" class="header-home hidden" id="header-home" title="Mijn dossiers">
+    ⌂
+   </button>
+<button class="subtle hidden" id="logout">
+    Uitloggen
+   </button>
+</header>
+<main>
+<section class="card hidden" id="setup">
+<h1>
+     Eenmalige verbinding
+    </h1>
+<p>
+     Vul de Project URL en de
+     <b>
+      publishable/anon key
+     </b>
+     van je eigen Supabase-project in. Gebruik nooit een service_role-key.
+    </p>
+<label>
+     Supabase Project URL
+     <input id="url" placeholder="https://xxxx.supabase.co"/>
+</label>
+<label>
+     Publishable / anon key
+     <input id="key" placeholder="sb_publishable_…"/>
+</label>
+<button id="save-config">
+     Verbinding bewaren
+    </button>
+</section>
+<section class="card hidden" id="auth">
+<h1>
+     Welkom bij EPC Buddy
+    </h1>
+<div class="tabs">
+<button class="selected" data-mode="login">
+      Inloggen
+     </button>
+<button data-mode="signup">
+      Registreren
+     </button>
+</div>
+<form id="auth-form">
+<label>
+      E-mailadres
+      <input autocomplete="email" id="email" required="" type="email"/>
+</label>
+<label>
+      Wachtwoord
+      <input id="password" minlength="6" required="" type="password"/>
+</label>
+<button id="auth-submit">
+      Inloggen
+     </button>
+</form>
+<p class="hint" id="auth-note">
+</p>
+</section>
+<section class="hidden" id="home">
+<div class="dossier-toolbar">
+<h1>
+      Mijn dossiers
+     </h1>
+<div class="toolbar-controls">
+<select aria-label="Filter op jaar" id="year-filter">
+<option value="all">
+        Alle jaren
+       </option>
+</select>
+<button aria-label="Sorteren en filteren" class="icon-button" id="filter-button" title="Sorteren en filteren">
+       ☷
+      </button>
+</div>
+</div>
+<div class="search-wrap">
+<span aria-hidden="true">
+      ⌕
+     </span>
+<input aria-label="Dossiers zoeken" id="search" placeholder="Zoek op dossiernummer, adres of eigenaar"/>
+</div>
+<div id="listing">
+<div class="dossier-list" id="dossiers">
+</div>
+</div>
+<button aria-label="Nieuw dossier" class="floating-add" id="new" title="Nieuw dossier">
+     +
+    </button>
+<div class="filter-panel hidden" id="filter-panel">
+<strong>
+      Sorteren
+     </strong>
+<div class="sort-options">
+<button data-sort="name" title="Op dossiernaam" type="button">
+       A–Z
+      </button>
+<button class="selected" data-sort="date" title="Op datum" type="button">
+       ↓ Datum
+      </button>
+</div>
+<label>
+      Volgorde
+      <select id="sort-direction">
+<option value="desc">
+        Nieuwste eerst / Z–A
+       </option>
+<option value="asc">
+        Oudste eerst / A–Z
+       </option>
+</select>
+</label>
+<strong>
+      Filteren op type
+     </strong>
+<label class="filter-check">
+<input checked="" type="checkbox" value="RES"/>
+      Residentieel (RES)
+     </label>
+<label class="filter-check">
+<input checked="" type="checkbox" value="GD"/>
+      Gemeenschappelijke delen (GD)
+     </label>
+<label class="filter-check">
+<input checked="" type="checkbox" value="kNR"/>
+      Klein niet-residentieel (kNR)
+     </label>
+<button id="apply-filters" type="button">
+      Toepassen
+     </button>
+</div>
+</section>
+<section class="hidden" id="editor">
+<div class="bar">
+<button aria-label="Terug naar dossier" class="editor-back-button" id="back" title="Terug naar dossier" type="button"><img alt="" src="ico/vorige-pijl.svg"/></button>
+<h1 id="editor-title">Nieuw dossier</h1>
+</div>
+<form class="card" id="dossier-form">
+<h2>
+      Dossiergegevens
+     </h2>
+<div class="grid">
+<label>
+       Dossiernummer
+       <input name="dossier_number"/>
+</label>
+<label>
+       Datum plaatsbezoek
+       <input name="inspection_date" type="date"/>
+</label>
+</div>
+<label class="dossier-type-field">Type dossier
+<select name="dossier_type" required="">
+<option value="RES">Residentieel</option>
+<option value="GD">Gemeenschappelijke delen</option>
+<option value="kNR">Klein niet-residentieel</option>
+</select></label>
+<h2>
+      Opdrachtgever
+     </h2>
+<label>
+      Type opdrachtgever
+      <select id="client-kind" name="client_kind">
+<option value="particulier">
+        Particulier
+       </option>
+<option value="onderneming">
+        Onderneming
+       </option>
+</select>
+</label>
+<label>
+      Naam opdrachtgever
+      <input name="client_name" required=""/>
+</label>
+<div class="grid contact-fields">
+<label>Telefoonnummer (optioneel)<input autocomplete="tel" inputmode="tel" name="client_phone" type="tel"/></label>
+<label>E-mail (optioneel)<input autocomplete="email" name="client_email" type="email"/></label>
+</div>
+<label class="hidden" id="vat-row">
+      Btw-nummer
+      <input id="vat" name="client_vat_number" placeholder="BE0123456789">
+</input></label>
+<label class="check">
+<input id="same" type="checkbox">
+      Zelfde adres als te certificeren pand
+     </input></label>
+<div id="client-address">
+<h3>
+       Adres opdrachtgever
+      </h3>
+<div class="grid">
+<label>
+        Straat
+        <input name="client_street"/>
+</label>
+<label>
+        Nummer
+        <input name="client_number"/>
+</label>
+<label>
+        Postcode
+        <input name="client_postal"/>
+</label>
+<label>
+        Gemeente
+        <input name="client_city"/>
+</label>
+</div>
+</div>
+<h2>
+      Te certificeren pand
+     </h2>
+<div class="grid">
+<label>
+       Straat
+       <input name="property_street" required=""/>
+</label>
+<label>
+       Nummer
+       <input name="property_number" required=""/>
+</label>
+<label>
+       Postcode
+       <input name="property_postal" required=""/>
+</label>
+<label>
+       Gemeente
+       <input name="property_city" required=""/>
+</label>
+</div>
+<div class="actions epc-form-actions">
+<button class="delete-dossier hidden" id="delete-dossier" type="button">Verwijderen</button><button class="secondary" id="cancel" type="button">Annuleren</button><button id="save" type="submit">
+       Opslaan
+      </button></div>
+</form>
+</section>
+<section class="hidden facade-screen" id="facade-page">
+<div class="facade-page-head"><button aria-label="Terug naar dossier" class="detail-back-button" id="facade-back" type="button"><img alt="" src="ico/vorige-pijl.svg"/></button><span class="facade-page-icon" id="facade-page-icon"></span><h1 id="facade-page-title">Voorgevel</h1><button aria-label="Gevel verwijderen" class="facade-delete" id="facade-delete" title="Gevel verwijderen" type="button"><img alt="" class="delete-icon" src="ico/delete.svg"/></button></div>
+<div class="epc-section-content"><div class="construction-list" id="construction-list"></div><div aria-label="Foto’s van dit onderdeel" class="epc-photo-gallery" id="facade-page-photos"></div></div>
+
+<div class="epc-photo-actions"><button aria-label="Gevelconstructie toevoegen" class="floating-add" id="construction-add" type="button">+</button><button aria-label="Foto nemen" class="epc-camera-button" data-photo-for="construction-add" title="Foto nemen" type="button"><img alt="" src="ico/camera.svg"/></button></div>
+</section>
+<section class="hidden facade-screen" id="construction-editor">
+<div class="facade-page-head"><button aria-label="Terug naar gevel" class="detail-back-button" id="construction-back" type="button"><img alt="" src="ico/vorige-pijl.svg"/></button><span class="facade-page-icon"><img alt="" src="ico/gevelconstructie.svg"/></span><h1 id="construction-heading">Nieuwe gevelconstructie</h1></div>
+<form class="construction-form" id="construction-form">
+<label>Naam *<input autocomplete="off" maxlength="120" name="name" required=""/></label>
+<label>Begrenzing<select name="boundary"><option value="">Maak een keuze</option><option value="Buiten">Buiten</option><option value="AOR">AOR</option><option value="Kelder">Kelder</option><option value="Grond">Grond</option><option value="AVR">AVR</option></select></label>
+<label>Volledig beglaasd<select name="fully_glazed"><option value="">Onbekend</option><option value="true">Ja</option><option value="false">Nee</option></select></label>
+<label>Isolatie<select name="insulation"><option value="">Maak een keuze</option><option value="Aanwezig">Aanwezig</option><option value="Onbekend">Onbekend</option><option value="PUR/PIR">PUR/PIR</option><option value="MW">MW</option><option value="EPS">EPS</option><option value="XPS">XPS</option><option value="PUR/PIR in situ">PUR/PIR in situ</option><option value="MW in situ">MW in situ</option><option value="EPS in situ">EPS in situ</option><option value="CG">CG</option><option value="PF">PF</option><option value="Perliet">Perliet</option></select></label>
+<label>Dikte isolatie (mm)<input inputmode="decimal" min="0" name="insulation_thickness_mm" step="0.1" type="number"/></label>
+<label>Plaats isolatie<select name="insulation_location"><option value="">Maak een keuze</option><option value="Buiten">Buiten</option><option value="Traditionele spouw">Traditionele spouw</option><option value="Houtskelet">Houtskelet</option><option value="Binnen">Binnen</option><option value="Onbekend">Onbekend</option></select></label>
+<label>Onderbreking isolatie<select name="insulation_interruption"><option value="">Maak een keuze</option><option value="Onbekend">Onbekend</option><option value="Afwezig">Afwezig</option><option value="Aanwezig">Aanwezig</option></select></label>
+<label>Luchtlaag<select name="air_layer"><option value="">Maak een keuze</option><option value="Ja, lege spouw">Ja, lege spouw</option><option value="Ja, deels gevulde spouw">Ja, deels gevulde spouw</option><option value="Ja, andere">Ja, andere</option><option value="Onbekend">Onbekend</option><option value="Afwezig">Afwezig</option></select></label>
+<label>Muurtype<select name="wall_type"><option value="">Maak een keuze</option><option value="Standaard">Standaard</option><option value="Iso snelbouwsteen">Iso snelbouwsteen</option><option value="Met celbeton">Met celbeton</option><option value="Met celbeton &gt; 23 cm">Met celbeton &gt; 23 cm</option></select></label>
+<label>Referentiejaar renovatie<input inputmode="numeric" max="2100" min="1800" name="renovation_reference_year" type="number"/></label>
+<label>Opmerking<textarea name="remarks" rows="3"></textarea></label>
+<div class="construction-actions epc-form-actions"><button class="delete-dossier hidden" id="construction-delete" type="button">Verwijderen</button><button class="secondary" id="construction-cancel" type="button">Annuleren</button><button id="construction-save" type="submit">Opslaan</button></div>
+</form>
+</section>
+<section class="hidden facade-screen" id="envelope-page">
+<div class="facade-page-head"><button aria-label="Terug naar dossier" class="detail-back-button" id="envelope-page-back" type="button"><img alt="" src="ico/vorige-pijl.svg"/></button><span class="facade-page-icon" id="envelope-page-icon"></span><h1 id="envelope-page-title">Hellend dak</h1><button class="facade-delete" id="envelope-page-delete" title="Onderdeel verwijderen" type="button"><img alt="" class="delete-icon" src="ico/delete.svg"/></button></div>
+<div class="epc-section-content"><div class="construction-list" id="envelope-construction-list"></div><div aria-label="Foto’s van dit onderdeel" class="epc-photo-gallery" id="envelope-page-photos"></div></div>
+
+<div class="epc-photo-actions"><button aria-label="Constructie toevoegen" class="floating-add" id="envelope-construction-add" type="button">+</button><button aria-label="Foto nemen" class="epc-camera-button" data-photo-for="envelope-construction-add" title="Foto nemen" type="button"><img alt="" src="ico/camera.svg"/></button></div>
+</section>
+<section class="hidden facade-screen" id="envelope-editor">
+<div class="facade-page-head"><button aria-label="Terug naar dossier" class="detail-back-button" id="envelope-back" type="button"><img alt="" src="ico/vorige-pijl.svg"/></button><span class="facade-page-icon" id="envelope-icon"></span><h1 id="envelope-heading">Dak / vloer</h1></div>
+<form class="construction-form epc-inspection-form" id="envelope-form">
+<label>Naam *<input maxlength="120" name="name" required=""/></label>
+<label data-kinds="plafond">Begrenzing<select name="boundary"><option value="">Maak een keuze</option><option value="AOR">AOR</option><option value="AVR">AVR</option></select></label>
+<label data-kinds="vloer">Begrenzing<select name="boundary"><option value="">Maak een keuze</option><option value="Buiten">Buiten</option><option value="AOR">AOR</option><option value="Kelder">Kelder</option><option value="Grond">Grond</option><option value="AVR">AVR</option></select></label>
+<label data-kinds="hellend_dak plat_dak">Volledig beglaasd<select name="fully_glazed"><option value="">Maak een keuze</option><option value="true">Ja</option><option value="false">Nee</option></select></label>
+<label data-kinds="hellend_dak">Aantal dakkapellen<input min="0" name="dormer_count" step="1" type="number"/></label>
+<label data-kinds="hellend_dak">Helling<select name="slope"><option value="">Maak een keuze</option><option value="Horizontaal">Horizontaal</option><option value="45°">45°</option><option value="Verticaal">Verticaal</option></select></label>
+<label>Isolatie<select name="insulation"><option value="">Maak een keuze</option><option value="Afwezig">Afwezig</option><option value="Onbekend">Onbekend</option><option value="PUR/PIR">PUR/PIR</option><option value="MW">MW</option><option value="EPS">EPS</option><option value="XPS">XPS</option><option value="PUR/PIR in situ">PUR/PIR in situ</option><option value="MW in situ">MW in situ</option><option value="EPS in situ">EPS in situ</option><option value="CG">CG</option><option value="PF">PF</option><option value="Perliet">Perliet</option></select></label>
+<label>Dikte isolatie (mm)<input inputmode="decimal" min="0" name="insulation_thickness_mm" step="0.1" type="number"/></label>
+<label>Onderbreking isolatie<select name="insulation_interruption"><option value="">Maak een keuze</option><option value="Onbekend">Onbekend</option><option value="Afwezig">Afwezig</option><option value="Aanwezig">Aanwezig</option></select></label>
+<label data-kinds="vloer">Vloerverwarming<select name="floor_heating"><option value="">Maak een keuze</option><option value="true">Ja</option><option value="false">Nee</option></select></label>
+<label>Luchtlaag<select name="air_layer"><option value="">Maak een keuze</option><option value="Onbekend">Onbekend</option><option value="Afwezig">Afwezig</option><option value="Aanwezig">Aanwezig</option></select></label>
+<label data-kinds="hellend_dak">Daktype<select name="element_type"><option value="">Maak een keuze</option><option value="Standaard">Standaard</option><option value="Met riet">Met riet</option></select></label>
+<label data-kinds="plat_dak">Daktype<select name="element_type"><option value="">Maak een keuze</option><option value="Standaard">Standaard</option><option value="Met celbeton">Met celbeton</option></select></label>
+<label data-kinds="plafond">Plafondtype<select name="element_type"><option value="">Maak een keuze</option><option value="Standaard">Standaard</option><option value="Met celbeton">Met celbeton</option></select></label>
+<label data-kinds="vloer">Vloertype<select name="element_type"><option value="">Maak een keuze</option><option value="Standaard">Standaard</option><option value="Met celbeton">Met celbeton</option></select></label>
+<label>Referentiejaar renovatie<input inputmode="numeric" max="2100" min="1800" name="renovation_reference_year" type="number"/></label>
+<label class="epc-remarks-field">Opmerkingen<textarea name="remarks" rows="4"></textarea></label>
+<div class="construction-actions epc-form-actions"><button class="delete-dossier hidden" id="envelope-delete" type="button">Verwijderen</button><button class="secondary" id="envelope-cancel" type="button">Annuleren</button><button id="envelope-save" type="submit">Opslaan</button></div>
+</form>
+</section>
+<!-- Installatiecategorie met meerdere afzonderlijke toestellen -->
+<section class="hidden facade-screen" id="installation-page">
+<div class="facade-page-head"><button class="detail-back-button" id="installation-back" type="button"><img alt="Terug" src="ico/vorige-pijl.svg"/></button><span class="facade-page-icon" id="installation-icon"></span><h1 id="installation-title">Installaties</h1><button aria-label="Categorie verwijderen" class="facade-delete" id="installation-section-delete" type="button"><img alt="" class="delete-icon" src="ico/delete.svg"/></button></div>
+<div class="epc-section-content"><div class="construction-list" id="installation-list"></div><div aria-label="Foto’s van dit onderdeel" class="epc-photo-gallery" id="installation-page-photos"></div></div>
+<div class="epc-photo-actions"><button aria-label="Installatie toevoegen" class="floating-add" id="installation-add" type="button">+</button><button aria-label="Foto nemen" class="epc-camera-button" data-photo-for="installation-add" title="Foto nemen" type="button"><img alt="" src="ico/camera.svg"/></button></div>
+</section>
+<section class="hidden facade-screen" id="installation-editor">
+<div class="facade-page-head"><button class="detail-back-button" id="installation-edit-back" type="button"><img alt="Terug" src="ico/vorige-pijl.svg"/></button><span class="facade-page-icon" id="installation-edit-icon"></span><h1 id="installation-edit-title">Nieuwe installatie</h1></div>
+<form class="construction-form epc-inspection-form" id="installation-form"><label>Naam *<input maxlength="120" name="name" required=""/></label><div id="installation-fields"></div><label class="epc-remarks-field">Opmerkingen<textarea name="remarks" rows="4"></textarea></label><div class="construction-actions epc-form-actions"><button class="delete-dossier hidden" id="installation-delete" type="button">Verwijderen</button><button class="secondary" id="installation-cancel" type="button">Annuleren</button><button id="installation-save" type="submit">Opslaan</button></div></form>
+</section>
+<!-- Eén camera-input en één viewer voor alle inspectieonderdelen. -->
+<input accept="image/*" aria-label="Foto maken" capture="environment" class="hidden" id="epc-camera-input" type="file"/>
+<div aria-label="Foto bekijken" aria-modal="true" class="epc-photo-viewer hidden" id="epc-photo-viewer" role="dialog">
+<button aria-label="Sluiten" class="epc-photo-viewer-close" id="epc-photo-viewer-close" type="button">×</button>
+<img alt="Foto in volledig scherm" id="epc-photo-viewer-image"/>
+<div id="epc-photo-viewer-name"></div>
+</div>
+<section class="hidden" id="detail">
+<div class="detail-head">
+<button aria-label="Terug naar dossiers" class="detail-back-button" id="detail-back" title="Terug naar dossiers" type="button"><img alt="" src="ico/vorige-pijl.svg"/></button>
+<h1 id="detail-title">
+      Dossier
+     </h1>
+<button aria-label="Dossiergegevens wijzigen" id="detail-edit" title="Dossiergegevens wijzigen" type="button">
+      ✎
+     </button>
+</div>
+<div class="detail-summary" id="detail-summary">
+<button aria-expanded="true" class="summary-toggle" id="summary-toggle" type="button">
+<span>
+       Dossiergegevens
+      </span>
+<span class="summary-arrow" id="summary-arrow">
+       ⌃
+      </span>
+</button>
+<div class="summary-content" id="summary-content">
+<div>
+<span>
+        Datum plaatsbezoek:
+       </span>
+<strong id="detail-date">
+        —
+       </strong>
+</div>
+<div>
+<span>
+        Adres:
+       </span>
+<strong id="detail-address">
+        —
+       </strong>
+</div>
+<div>
+<span>
+        Opmerking:
+       </span>
+<strong id="detail-remark">
+        —
+       </strong>
+</div>
+<div>
+<span>
+        Opdrachtgever:
+       </span>
+<strong id="detail-client">
+        —
+       </strong>
+</div>
+<div class="hidden" id="detail-phone-row"><span>Telefoonnummer:</span><strong id="detail-phone"></strong></div>
+<div class="hidden" id="detail-email-row"><span>E-mail:</span><strong id="detail-email"></strong></div>
+</div>
+</div>
+<div class="facade-list" id="facade-list">
+<p class="facade-empty">
+      Nog geen gevels toegevoegd.
+     </p>
+</div>
+<button aria-label="Onderdeel toevoegen" class="floating-add" id="detail-add" type="button">
+     +
+    </button>
+</section>
+<div class="add-overlay hidden" id="envelope-overlay"></div><aside aria-label="Constructies" class="add-drawer construction-drawer hidden" id="envelope-drawer"><div class="drawer-title"><strong>Constructies</strong><button aria-label="Sluiten" id="envelope-drawer-close" type="button">×</button></div><div class="add-options" id="envelope-drawer-items"></div></aside><div class="add-overlay hidden" id="construction-overlay"></div>
+<aside aria-label="Gevelconstructies" class="add-drawer construction-drawer hidden" id="construction-drawer"><div class="drawer-title"><strong>Gevelconstructies</strong><button aria-label="Sluiten" id="construction-drawer-close" type="button">×</button></div><div class="add-options" id="construction-drawer-items"></div></aside>
+<div class="add-overlay hidden" id="add-overlay">
+</div>
+<aside aria-label="Onderdeel toevoegen" class="add-drawer hidden" id="add-drawer">
+<div class="drawer-title">
+<strong>
+      Onderdeel toevoegen
+     </strong>
+<button aria-label="Sluiten" id="close-drawer" type="button">
+      ×
+     </button>
+</div>
+<div class="add-options" id="add-options">
+</div>
+</aside>
+<button aria-label="Naar boven" class="scroll-top hidden" id="scroll-top" title="Naar boven" type="button"><img alt="" src="ico/scroll-to-top.svg"/></button>
+<nav aria-label="Hoofdnavigatie" class="bottom-nav hidden" id="bottom-nav">
+<button id="nav-home" type="button">
+<span>
+      ⌂
+     </span>
+     Home
+    </button>
+<button class="active" id="nav-dossiers" type="button">
+<span>
+      ▤
+     </span>
+     Dossiers
+    </button>
+<button id="nav-photos" type="button">
+<span>
+      ▣
+     </span>
+     Foto’s
+    </button>
+<button id="nav-more" type="button">
+<span>
+      ⚙
+     </span>
+     Meer
+    </button>
+</nav>
+<div aria-live="polite" id="notice" role="status">
+</div>
+</main>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js">
+</script>
+<script src="js/app.js?v=photos-1">
+</script>
+</body>
+</html>
