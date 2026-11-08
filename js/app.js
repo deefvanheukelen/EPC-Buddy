@@ -1,7 +1,7 @@
 const epcIcons={"Voorgevel": "voorgevel.svg", "Achtergevel": "achtergevel.svg", "Linkergevel": "linkergevel.svg", "Rechtergevel": "rechtergevel.svg", "Hellend dak voor": "hellend-dak-voor.svg", "Hellend dak achter": "hellend-dak-achter.svg", "Hellend dak links": "hellend-dak-links.svg", "Hellend dak rechts": "hellend-dak-rechts.svg", "Plat dak": "plat-dak.svg", "Plafond": "plafond.svg", "Vloer": "vloer.svg", "Opwekker verwarming": "opwekker-verwarming.svg", "Actieve koeling": "actieve-koeling.svg", "Opwekker sanitair warm water": "opwekker-sanitair-warm-water.svg", "Continue ventilatie-eenheid": "continu-draaiend-ventilatietoestel.svg", "Ventilatie - Ruimte": "ventilatie-ruimte.svg", "Zonneboiler": "zonneboiler.svg", "PV-panelen": "pv-panelen.svg", "Verlichting": "verlichting.svg"};
 function iconFor(name){const img=document.createElement('img');img.src='ico/'+(epcIcons[name]||'gevelconstructie.svg');img.alt='';img.className='epc-item-icon';img.loading='lazy';return img}
 (()=>{'use strict';
-const $=id=>document.getElementById(id), show=(id,on=true)=>$(id).classList.toggle('hidden',!on);let db=null,user=null,workspace=null,current=null,activeDossier=null,activeFacade=null,activeConstruction=null,activeEnvelope=null,activeEnvelopeRecord=null,activeEnvelopeConstruction=null,activeInstallationSection=null,activeInstallation=null,routeToken=0,mode='login',items=[],sortBy='date';
+const $=id=>document.getElementById(id), show=(id,on=true)=>$(id).classList.toggle('hidden',!on);let db=null,user=null,workspace=null,current=null,activeDossier=null,activeFacade=null,activeConstruction=null,activeEnvelope=null,activeEnvelopeRecord=null,activeEnvelopeConstruction=null,activeInstallationSection=null,activeInstallation=null,routeToken=0,authBootstrapped=false,activeScreen='auth',mode='login',items=[],sortBy='date';
 const sections=['Algemene gegevens','Gevels','Type openingen','Openingen','Hellende daken','Platte daken','Plafonds','Vloeren','Verwarming','Sanitair warm water','Ventilatie','Koeling','PV-panelen','Zonneboiler','Verlichting','Ruimtes'];
 
 function note(s){$('notice').textContent=s;$('notice').classList.add('show');clearTimeout(note.timer);note.timer=setTimeout(()=>$('notice').classList.remove('show'),2600)}
@@ -18,9 +18,62 @@ function config(){
  if(!(key.startsWith('sb_publishable_')||key.startsWith('eyJ')))return null;
  return {url,key};
 }
-function init(){const c=config();if(!c){screen('auth');note('Appconfiguratie ontbreekt. Neem contact op met de beheerder.');return}if(!window.supabase){screen('auth');note('Verbinding niet beschikbaar. Controleer je internetverbinding.');return}try{db=window.supabase.createClient(c.url,c.key);db.auth.onAuthStateChange((event,s)=>{user=s?.user||null;if(event==='SIGNED_IN'||event==='SIGNED_OUT'||event==='USER_UPDATED')setTimeout(()=>route(),0)});db.auth.getSession().then(({data,error})=>{if(error)return err(error);user=data.session?.user||null;route()})}catch(e){screen('auth');err(e)}}
-function screen(id){['auth','home','editor','detail','facade-page','construction-editor','envelope-editor','envelope-page','installation-page','installation-editor'].forEach(x=>show(x,x===id));show('logout',!!user);show('header-home',!!user);show('bottom-nav',!!user);document.body.classList.toggle('app-logged-in',!!user);$('nav-dossiers').classList.toggle('active',['home','detail','editor','facade-page','construction-editor','envelope-editor','envelope-page','installation-page','installation-editor'].includes(id));$('nav-home').classList.toggle('active',false);requestAnimationFrame(refreshScrollTop)}
-async function route(){
+// Navigation continuity on mobile: the external camera can evict the browser tab.
+// sessionStorage holds ONLY opaque navigation identifiers, never photos, tokens or client data.
+const VIEW_KEY='epc-buddy-view-v1';
+function persistInspectionView(){
+ try{
+  if(!user||!activeDossier||activeScreen==='auth'||activeScreen==='home'){
+   sessionStorage.removeItem(VIEW_KEY);return;
+  }
+  sessionStorage.setItem(VIEW_KEY,JSON.stringify({
+   userId:user.id,dossierId:activeDossier.id,screen:activeScreen,
+   facadeId:activeFacade?.id||null,envelopeId:activeEnvelopeRecord?.id||null,
+   envelopeName:activeEnvelope||null,installationId:activeInstallationSection?.id||null
+  }));
+ }catch(_){} // Storage may be disabled by privacy settings.
+}
+async function restoreInspectionView(){
+ let saved;
+ try{saved=JSON.parse(sessionStorage.getItem(VIEW_KEY)||'null')}catch(_){return}
+ if(!saved||saved.userId!==user?.id||!saved.dossierId)return;
+ // Re-query with normal RLS. Never trust an ID from browser storage as authorization.
+ const {data:dossier,error}=await db.from('epc_dossiers').select('*')
+  .eq('id',saved.dossierId).eq('workspace_id',workspace).is('deleted_at',null).maybeSingle();
+ if(error||!dossier){sessionStorage.removeItem(VIEW_KEY);return}
+ activeDossier=dossier;current=dossier.id;
+ screen('detail');renderDetail();await loadFacades();
+ if(saved.screen==='facade-page'&&saved.facadeId){
+  const {data}=await db.from('epc_facades').select('*').eq('id',saved.facadeId).eq('dossier_id',dossier.id).is('deleted_at',null).maybeSingle();
+  if(data)await openFacade(data);
+ }else if(saved.screen==='envelope-page'&&saved.envelopeId){
+  const {data}=await db.from('epc_envelope_elements').select('*').eq('id',saved.envelopeId).eq('dossier_id',dossier.id).is('deleted_at',null).maybeSingle();
+  if(data)await openEnvelope(data.name,data);
+ }else if(saved.screen==='installation-page'&&saved.installationId){
+  const {data}=await db.from('epc_installation_sections').select('*').eq('id',saved.installationId).eq('dossier_id',dossier.id).is('deleted_at',null).maybeSingle();
+  if(data)await openInstallationSection(data);
+ }
+ // Editor screens are intentionally not restored: unsaved edits cannot be reconstructed safely.
+}
+function init(){const c=config();if(!c){screen('auth');note('Appconfiguratie ontbreekt. Neem contact op met de beheerder.');return}if(!window.supabase){screen('auth');note('Verbinding niet beschikbaar. Controleer je internetverbinding.');return}try{db=window.supabase.createClient(c.url,c.key);db.auth.onAuthStateChange((event,s)=>{
+   // TOKEN_REFRESHED and USER_UPDATED must never send an active inspector back to Home.
+   // Camera apps can background/resume the browser and trigger auth events.
+   const nextUser=s?.user||null,oldId=user?.id||null,nextId=nextUser?.id||null;
+   user=nextUser;
+   if(!authBootstrapped)return; // getSession() handles the initial route exactly once.
+   if(oldId!==nextId){if(!nextId)sessionStorage.removeItem(VIEW_KEY);setTimeout(()=>route(),0)}
+  });
+  db.auth.getSession().then(({data,error})=>{
+   if(error)return err(error);
+   const previousId=user?.id||null;
+   user=data.session?.user||null;
+   authBootstrapped=true;
+   // Restore the previous screen after a real browser reload, e.g. camera process eviction.
+   // Only opaque IDs are persisted; never credentials or dossier details.
+   route({restore:true});
+  })}catch(e){screen('auth');err(e)}}
+function screen(id){activeScreen=id;persistInspectionView();['auth','home','editor','detail','facade-page','construction-editor','envelope-editor','envelope-page','installation-page','installation-editor'].forEach(x=>show(x,x===id));show('logout',!!user);show('header-home',!!user);document.body.classList.toggle('app-logged-in',!!user);requestAnimationFrame(refreshScrollTop)}
+async function route({restore=false}={}){
  const token=++routeToken;
  if(!db){screen('auth');return}
  if(!user){workspace=null;screen('auth');return}
@@ -33,12 +86,13 @@ async function route(){
   screen('home');
   if(!workspace){note('Geen werkruimte gevonden voor dit account.');return}
   await load();
+  if(restore)await restoreInspectionView();
  }catch(e){if(token===routeToken){screen('home');err(e)}}
 }
 $('logout').onclick=async()=>{if(db)await db.auth.signOut();user=null;route()};
 document.querySelectorAll('[data-mode]').forEach(b=>b.onclick=()=>{mode=b.dataset.mode;document.querySelectorAll('[data-mode]').forEach(x=>x.classList.toggle('selected',x===b));$('auth-submit').textContent=mode==='login'?'Inloggen':'Registreren';$('auth-note').textContent=mode==='signup'?'Na registratie kan e-mailbevestiging nodig zijn.':''});
 $('auth-form').onsubmit=async e=>{e.preventDefault();const email=$('email').value.trim(),password=$('password').value;$('auth-submit').disabled=true;try{const r=mode==='login'?await db.auth.signInWithPassword({email,password}):await db.auth.signUp({email,password});if(r.error)throw r.error;if(mode==='signup')note('Registratie ontvangen. Controleer zo nodig je e-mail.');else{user=r.data.user;await route()}}catch(ex){err(ex)}finally{$('auth-submit').disabled=false}};
-$('new').onclick=()=>edit(null);$('search').oninput=()=>render();$('year-filter').onchange=render;$('filter-button').onclick=()=>show('filter-panel',$('filter-panel').classList.contains('hidden'));document.querySelectorAll('[data-sort]').forEach(b=>b.onclick=()=>{sortBy=b.dataset.sort;document.querySelectorAll('[data-sort]').forEach(x=>x.classList.toggle('selected',x===b))});$('sort-direction').onchange=render;$('apply-filters').onclick=()=>{show('filter-panel',false);render()};document.querySelectorAll('.filter-check input').forEach(c=>c.onchange=render);$('header-home').onclick=$('nav-home').onclick=$('nav-dossiers').onclick=()=>{closeDrawer();activeFacade=null;activeDossier=null;screen('home');load()};$('nav-photos').onclick=()=>note('Foto-overzicht wordt in een volgende fase toegevoegd.');$('nav-more').onclick=()=>note('Instellingen worden in een volgende fase toegevoegd.');$('back').onclick=$('cancel').onclick=()=>{if(activeDossier&&current===activeDossier.id){screen('detail');renderDetail();loadFacades()}else{screen('home');load()}};
+$('new').onclick=()=>edit(null);$('search').oninput=()=>render();$('year-filter').onchange=render;$('filter-button').onclick=()=>show('filter-panel',$('filter-panel').classList.contains('hidden'));document.querySelectorAll('[data-sort]').forEach(b=>b.onclick=()=>{sortBy=b.dataset.sort;document.querySelectorAll('[data-sort]').forEach(x=>x.classList.toggle('selected',x===b))});$('sort-direction').onchange=render;$('apply-filters').onclick=()=>{show('filter-panel',false);render()};document.querySelectorAll('.filter-check input').forEach(c=>c.onchange=render);$('header-home').onclick=()=>{closeDrawer();activeFacade=null;activeDossier=null;screen('home');load()};$('back').onclick=$('cancel').onclick=()=>{if(activeDossier&&current===activeDossier.id){screen('detail');renderDetail();loadFacades()}else{screen('home');load()}};
 async function load(){if(!workspace)return;const {data,error}=await db.from('epc_dossiers').select('id,dossier_number,dossier_type,client_name,property_address,inspection_date,updated_at').eq('workspace_id',workspace).is('deleted_at',null).order('updated_at',{ascending:false}).limit(250);if(error){err(error);return}items=data||[];const years=[...new Set(items.map(d=>String(d.inspection_date||'').slice(0,4)).filter(Boolean))].sort().reverse();const prev=$('year-filter').value;$('year-filter').innerHTML='<option value="all">Alle jaren</option>'+years.map(y=>`<option value="${y}">${y}</option>`).join('');$('year-filter').value=years.includes(prev)?prev:'all';render()}
 function dossierType(d){const t=String(d.dossier_type||d.type||d.certificate_type||d.epc_type||d.destination||'RES').toLowerCase();return t.includes('knr')?'kNR':t==='gd'||t.includes('gemeen')?'GD':'RES'}
 function render(){const q=$('search').value.toLocaleLowerCase(),year=$('year-filter').value,types=[...document.querySelectorAll('.filter-check input:checked')].map(c=>c.value);let results=items.filter(d=>(year==='all'||String(d.inspection_date||'').startsWith(year))&&types.includes(dossierType(d))&&[d.dossier_number,d.client_name,...Object.values(d.property_address||{})].join(' ').toLocaleLowerCase().includes(q));const dir=$('sort-direction').value==='asc'?1:-1;results.sort((a,b)=>dir*(sortBy==='name'?String(a.dossier_number||'').localeCompare(String(b.dossier_number||''),'nl',{numeric:true}):String(a.inspection_date||a.updated_at||'').localeCompare(String(b.inspection_date||b.updated_at||''))));$('dossiers').replaceChildren();if(!results.length){const empty=document.createElement('div');empty.className='empty-state';empty.innerHTML='<span class="empty-icon">▤</span><p>Geen dossiers gevonden.<br>Maak een dossier aan.</p>';$('dossiers').append(empty);return}results.forEach(d=>{const row=document.createElement('button');row.type='button';row.className='dossier-row';row.onclick=()=>open(d.id);const type=dossierType(d),tag=document.createElement('span');tag.className='type-tag type-'+type;tag.textContent=type;const txt=document.createElement('span');txt.className='dossier-row-text';const strong=document.createElement('strong');strong.textContent=d.dossier_number?'Dossier '+d.dossier_number:'Dossier zonder nummer';const address=document.createElement('small');const a=d.property_address||{};address.textContent=[a.street,a.number,[a.postal,a.city].filter(Boolean).join(' ')].filter(Boolean).join(', ');const date=document.createElement('small');date.textContent='Bezoek: '+(d.inspection_date?new Date(d.inspection_date+'T12:00:00').toLocaleDateString('nl-BE'):'—');txt.append(strong,address,date);const chevron=document.createElement('span');chevron.className='row-chevron';chevron.textContent='›';row.append(tag,txt,chevron);$('dossiers').append(row)})}
@@ -233,9 +287,9 @@ $('construction-add').onclick=async()=>{
 $('construction-overlay').onclick=$('construction-drawer-close').onclick=closeConstructionDrawer;
 async function loadConstructionForEdit(id){const {data,error}=await db.from('epc_facade_constructions').select('*').eq('id',id).eq('facade_id',activeFacade.id).eq('dossier_id',activeDossier.id).single();if(error)return err(error);editConstruction(data)}
 const cf=$('construction-form');
-function editConstruction(d){activeConstruction=d||null;cf.reset();$('construction-heading').textContent=d?'Gevelconstructie wijzigen':'Nieuwe gevelconstructie';show('construction-delete',!!d);if(d){for(const el of cf.elements){if(!el.name)continue;const value=d[el.name];el.value=value===null||value===undefined?'':typeof value==='boolean'?String(value):String(value)}}screen('construction-editor');window.scrollTo({top:0,behavior:'instant'})}
+function editConstruction(d){activeConstruction=d||null;cf.reset();$('construction-heading').textContent=d?'Gevelconstructie':'Nieuwe gevelconstructie';show('construction-delete',!!d);if(d){for(const el of cf.elements){if(!el.name)continue;const value=d[el.name];el.value=value===null||value===undefined?'':typeof value==='boolean'?String(value):String(value)}}screen('construction-editor');window.scrollTo({top:0,behavior:'instant'})}
 $('construction-back').onclick=$('construction-cancel').onclick=()=>{screen('facade-page');loadConstructions()};
-$('construction-delete').onclick=async()=>{if(!activeConstruction||!confirm('Gevelconstructie "'+activeConstruction.name+'" verwijderen?'))return;const {error}=await db.from('epc_facade_constructions').update({deleted_at:new Date().toISOString()}).eq('id',activeConstruction.id).eq('facade_id',activeFacade.id).eq('dossier_id',activeDossier.id);if(error)return err(error);activeConstruction=null;screen('facade-page');await loadConstructions();await loadSectionPhotos('facade',facade.id,'facade-page');note('Gevelconstructie verwijderd.')};
+$('construction-delete').onclick=async()=>{if(!activeConstruction||!confirm('Gevelconstructie "'+activeConstruction.name+'" verwijderen?'))return;const {error}=await db.from('epc_facade_constructions').update({deleted_at:new Date().toISOString()}).eq('id',activeConstruction.id).eq('facade_id',activeFacade.id).eq('dossier_id',activeDossier.id);if(error)return err(error);activeConstruction=null;screen('facade-page');await loadConstructions();await loadSectionPhotos('facade',activeFacade.id,'facade-page');note('Gevelconstructie verwijderd.')};
 cf.onsubmit=async e=>{e.preventDefault();if(!activeDossier||!activeFacade)return;const fd=new FormData(cf), payload={};for(const [key,val] of fd){const v=String(val).trim();payload[key]=v||null}payload.fully_glazed=payload.fully_glazed===null?null:payload.fully_glazed==='true';for(const key of ['insulation_thickness_mm','renovation_reference_year'])payload[key]=payload[key]===null?null:Number(payload[key]);$('construction-save').disabled=true;try{
  const {data:existing,error:lookupError}=await db.from('epc_facade_constructions')
  .select('id,name').eq('dossier_id',activeDossier.id).eq('facade_id',activeFacade.id).is('deleted_at',null);
@@ -260,7 +314,7 @@ cf.onsubmit=async e=>{e.preventDefault();if(!activeDossier||!activeFacade)return
   if(!r.error && r.data?.length!==ids.length)throw new Error('Niet alle gevelconstructies konden worden bijgewerkt.');
  }else{
   r=await db.from('epc_facade_constructions').insert({...payload,dossier_id:activeDossier.id,facade_id:activeFacade.id}).select('id').single();
- }if(r.error)throw r.error;screen('facade-page');await loadConstructions();await loadSectionPhotos('facade',facade.id,'facade-page');note('Gevelconstructie opgeslagen.')}catch(ex){err(ex)}finally{$('construction-save').disabled=false}};
+ }if(r.error)throw r.error;screen('facade-page');await loadConstructions();await loadSectionPhotos('facade',activeFacade.id,'facade-page');note('Gevelconstructie opgeslagen.')}catch(ex){err(ex)}finally{$('construction-save').disabled=false}};
 
 $('summary-toggle').onclick=()=>{const isOpen=$('summary-content').classList.toggle('hidden')===false;$('summary-toggle').setAttribute('aria-expanded',String(isOpen));$('summary-arrow').textContent=isOpen?'⌃':'⌄'};
 $('detail-back').onclick=()=>{closeDrawer();activeDossier=null;screen('home');load();window.scrollTo({top:0,behavior:'instant'})};
@@ -344,7 +398,7 @@ $('envelope-overlay').onclick=$('envelope-drawer-close').onclick=closeEnvelopeDr
 function envelopeTypeLabel(name){return name.startsWith('Hellend dak')?'Daktype':name==='Plat dak'?'Daktype':name==='Plafond'?'Plafondtype':'Vloertype'}
 function envelopeShow(name,record=null){
  activeEnvelope=name;activeEnvelopeConstruction=record;envelopeForm.reset();const kind=envelopeKind();
- $('envelope-heading').textContent=(record?'Wijzig ':'Nieuwe ')+envelopeLabel();
+ $('envelope-heading').textContent=(record?'':'Nieuwe ')+envelopeLabel();
  $('envelope-icon').replaceChildren(constructionIcon(kind));
  for(const label of envelopeForm.querySelectorAll('[data-kinds]')){
   const visible=label.dataset.kinds.split(' ').includes(kind);label.classList.toggle('hidden',!visible);
@@ -485,7 +539,7 @@ $('installation-form').onsubmit=async event=>{
  const payload={dossier_id:activeDossier.id,section_id:activeInstallationSection.id,name:String(fd.get('name')||'').trim(),remarks:String(fd.get('remarks')||'').trim()||null,details};
  const button=$('installation-save');button.disabled=true;try{
   const query=db.from('epc_installation_entries');const {error}=activeInstallation?await query.update(payload).eq('id',activeInstallation.id).eq('section_id',activeInstallationSection.id):await query.insert(payload);
-  if(error)throw error;screen('installation-page');await loadInstallationEntries();await loadSectionPhotos('installation',section.id,'installation-page');note('Installatie opgeslagen.');
+  if(error)throw error;screen('installation-page');await loadInstallationEntries();await loadSectionPhotos('installation',activeInstallationSection.id,'installation-page');note('Installatie opgeslagen.');
  }catch(ex){err(ex)}finally{button.disabled=false}
 };
 

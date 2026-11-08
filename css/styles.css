@@ -514,3 +514,18 @@ main{max-width:980px;margin:auto;padding:23px 18px 110px}.card{background:white;
 #facade-page .epc-section-content>.epc-photo-gallery:empty,
 #envelope-page .epc-section-content>.epc-photo-gallery:empty,
 #installation-page .epc-section-content>.epc-photo-gallery:empty {display:none}
+
+/* EPC Buddy: bottom navigation is intentionally removed.
+   Reserve only space needed for the floating add/camera actions. */
+.bottom-nav{display:none!important}
+main{padding-bottom:24px!important}
+#detail{padding-bottom:22px!important}
+#detail #facade-list{margin-bottom:62px!important}
+.facade-screen{padding-bottom:76px!important}
+#construction-editor,#envelope-editor,#installation-editor{padding-bottom:30px!important}
+.floating-add{bottom:24px}
+#notice{bottom:20px}
+.scroll-top{bottom:18px!important}
+@media(max-width:640px){main{padding-bottom:22px!important}.floating-add{bottom:20px}}
+/* Photo action buttons sit at the bottom of the detail panel, not above a footer. */
+.epc-photo-actions{padding-bottom:12px}
