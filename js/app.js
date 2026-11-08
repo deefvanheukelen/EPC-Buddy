@@ -6,12 +6,23 @@ const sections=['Algemene gegevens','Gevels','Type openingen','Openingen','Helle
 
 function note(s){$('notice').textContent=s;$('notice').classList.add('show');clearTimeout(note.timer);note.timer=setTimeout(()=>$('notice').classList.remove('show'),2600)}
 function err(e){note(e?.message||String(e))}
-function config(){try{return JSON.parse(localStorage.getItem('epcb_config')||'null')}catch{return null}}
-function init(){const c=config();if(!c){show('setup');return}if(!window.supabase){show('setup');note('Supabase-bibliotheek niet geladen. Controleer je internetverbinding.');return}try{db=window.supabase.createClient(c.url,c.key);db.auth.onAuthStateChange((event,s)=>{user=s?.user||null;if(event==='SIGNED_IN'||event==='SIGNED_OUT'||event==='USER_UPDATED')setTimeout(()=>route(),0)});db.auth.getSession().then(({data,error})=>{if(error)return err(error);user=data.session?.user||null;route()})}catch(e){show('setup');err(e)}}
-function screen(id){['setup','auth','home','editor','detail','facade-page','construction-editor','envelope-editor','envelope-page','installation-page','installation-editor'].forEach(x=>show(x,x===id));show('logout',!!user);show('header-home',!!user);show('bottom-nav',!!user);document.body.classList.toggle('app-logged-in',!!user);$('nav-dossiers').classList.toggle('active',['home','detail','editor','facade-page','construction-editor','envelope-editor','envelope-page','installation-page','installation-editor'].includes(id));$('nav-home').classList.toggle('active',false);requestAnimationFrame(refreshScrollTop)}
+// Public project settings are deployed with the app, not entered by each user.
+// A publishable/anon key is NOT a secret. Never use a service_role or sb_secret key here.
+function config(){
+ const c=window.EPC_BUDDY_CONFIG;
+ if(!c||typeof c.url!=='string'||typeof c.key!=='string')return null;
+ const url=c.url.trim().replace(/\/$/,'');
+ const key=c.key.trim();
+ if(!/^https:\/\/[a-z0-9-]+\.supabase\.co$/i.test(url))return null;
+ if(key.includes('VUL_HIER')||url.includes('JOUW-PROJECT-REF'))return null;
+ if(!(key.startsWith('sb_publishable_')||key.startsWith('eyJ')))return null;
+ return {url,key};
+}
+function init(){const c=config();if(!c){screen('auth');note('Appconfiguratie ontbreekt. Neem contact op met de beheerder.');return}if(!window.supabase){screen('auth');note('Verbinding niet beschikbaar. Controleer je internetverbinding.');return}try{db=window.supabase.createClient(c.url,c.key);db.auth.onAuthStateChange((event,s)=>{user=s?.user||null;if(event==='SIGNED_IN'||event==='SIGNED_OUT'||event==='USER_UPDATED')setTimeout(()=>route(),0)});db.auth.getSession().then(({data,error})=>{if(error)return err(error);user=data.session?.user||null;route()})}catch(e){screen('auth');err(e)}}
+function screen(id){['auth','home','editor','detail','facade-page','construction-editor','envelope-editor','envelope-page','installation-page','installation-editor'].forEach(x=>show(x,x===id));show('logout',!!user);show('header-home',!!user);show('bottom-nav',!!user);document.body.classList.toggle('app-logged-in',!!user);$('nav-dossiers').classList.toggle('active',['home','detail','editor','facade-page','construction-editor','envelope-editor','envelope-page','installation-page','installation-editor'].includes(id));$('nav-home').classList.toggle('active',false);requestAnimationFrame(refreshScrollTop)}
 async function route(){
  const token=++routeToken;
- if(!db){screen('setup');return}
+ if(!db){screen('auth');return}
  if(!user){workspace=null;screen('auth');return}
  try{
   const uid=user.id;
@@ -24,7 +35,6 @@ async function route(){
   await load();
  }catch(e){if(token===routeToken){screen('home');err(e)}}
 }
-$('save-config').onclick=()=>{const url=$('url').value.trim().replace(/\/$/,'');const key=$('key').value.trim();if(!/^https:\/\/[\w.-]+\.supabase\.co$/.test(url)||!key){note('Controleer Project URL en publishable key.');return}localStorage.setItem('epcb_config',JSON.stringify({url,key}));show('setup',false);init()};
 $('logout').onclick=async()=>{if(db)await db.auth.signOut();user=null;route()};
 document.querySelectorAll('[data-mode]').forEach(b=>b.onclick=()=>{mode=b.dataset.mode;document.querySelectorAll('[data-mode]').forEach(x=>x.classList.toggle('selected',x===b));$('auth-submit').textContent=mode==='login'?'Inloggen':'Registreren';$('auth-note').textContent=mode==='signup'?'Na registratie kan e-mailbevestiging nodig zijn.':''});
 $('auth-form').onsubmit=async e=>{e.preventDefault();const email=$('email').value.trim(),password=$('password').value;$('auth-submit').disabled=true;try{const r=mode==='login'?await db.auth.signInWithPassword({email,password}):await db.auth.signUp({email,password});if(r.error)throw r.error;if(mode==='signup')note('Registratie ontvangen. Controleer zo nodig je e-mail.');else{user=r.data.user;await route()}}catch(ex){err(ex)}finally{$('auth-submit').disabled=false}};
