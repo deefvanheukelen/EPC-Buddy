@@ -142,6 +142,32 @@
 <button aria-label="Terug naar dossier" class="editor-back-button" id="back" title="Terug naar dossier" type="button"><img alt="" src="ico/vorige-pijl.svg"/></button>
 <h1 id="editor-title">Nieuw dossier</h1>
 </div>
+<!-- New dossiers use this three-page wizard. Existing dossier editing remains unchanged. -->
+<div id="dossier-new-wizard" class="dossier-new-wizard card hidden">
+ <div class="dossier-wizard-top"><button type="button" id="dossier-wizard-prev" class="epc-wizard-back hidden" aria-label="Vorige stap"><img src="ico/vorige-pijl.svg" alt=""></button><h2 id="dossier-wizard-heading">Dossiergegevens</h2><small id="dossier-wizard-count">1 / 3</small></div>
+ <form id="dossier-wizard-form" novalidate>
+  <div class="dossier-wizard-step" data-dossier-step="0">
+   <label>DOSSIERNAAM <input name="number" maxlength="120" required autocomplete="off"></label>
+   <label>DATUM PLAATSBEZOEK <input name="date" type="date" required></label>
+   <div class="dossier-wizard-label">TYPE DOSSIER</div>
+   <div class="dossier-type-choices" role="group" aria-label="Type dossier">
+    <button type="button" data-type="RES">RES</button><button type="button" data-type="GD">GD</button><button type="button" data-type="kNR">kNR</button>
+   </div>
+  </div>
+  <div class="dossier-wizard-step hidden" data-dossier-step="1">
+   <label>STRAAT + NR + (BUSNR) <input name="street_line" required autocomplete="street-address"></label>
+   <label>POSTCODE + GEMEENTE <input name="postal_city" required autocomplete="off"></label>
+   <label>OPMERKING <textarea name="remark" rows="4"></textarea></label>
+  </div>
+  <div class="dossier-wizard-step hidden" data-dossier-step="2">
+   <label>NAAM <input name="surname" required autocomplete="family-name"></label>
+   <label>VOORNAAM <input name="given" required autocomplete="given-name"></label>
+   <label>TEL/GSM <input name="phone" type="tel" autocomplete="tel"></label>
+   <label>E-MAIL <input name="email" type="email" autocomplete="email"></label>
+  </div>
+  <div class="dossier-wizard-bottom"><button id="dossier-wizard-next" class="hidden" type="button">Volgende</button><button id="dossier-wizard-save" class="hidden" type="submit">Opslaan</button></div>
+ </form>
+</div>
 <form class="card" id="dossier-form">
 <h2>
       Dossiergegevens
@@ -236,7 +262,7 @@
        <input name="property_city" required=""/>
 </label>
 </div>
-<div class="actions epc-form-actions">
+<label>Opmerking<textarea name="remarks" rows="3"></textarea></label><div class="actions epc-form-actions">
 <button class="delete-dossier hidden" id="delete-dossier" type="button">Verwijderen</button><button class="secondary" id="cancel" type="button">Annuleren</button><button id="save" type="submit">
        Opslaan
       </button></div>
@@ -300,7 +326,7 @@
 </section>
 <section class="hidden facade-screen" id="installation-editor">
 <div class="facade-page-head"><button class="detail-back-button" id="installation-edit-back" type="button"><img alt="Terug" src="ico/vorige-pijl.svg"/></button><span class="facade-page-icon" id="installation-edit-icon"></span><h1 id="installation-edit-title">Nieuwe installatie</h1></div>
-<form class="construction-form epc-inspection-form" id="installation-form"><label>Naam *<input maxlength="120" name="name" required=""/></label><div id="installation-fields"></div><label class="epc-remarks-field">Opmerkingen<textarea name="remarks" rows="4"></textarea></label><div class="construction-actions epc-form-actions"><button class="delete-dossier hidden" id="installation-delete" type="button">Verwijderen</button><button class="secondary" id="installation-cancel" type="button">Annuleren</button><button id="installation-save" type="submit">Opslaan</button></div></form>
+<div aria-live="polite" class="epc-wizard hidden" id="installation-wizard"></div><form class="construction-form epc-inspection-form" id="installation-form"><label>Naam *<input maxlength="120" name="name" required=""/></label><div id="installation-fields"></div><label class="epc-remarks-field">Opmerkingen<textarea name="remarks" rows="4"></textarea></label><div class="construction-actions epc-form-actions"><button class="delete-dossier hidden" id="installation-delete" type="button">Verwijderen</button><button class="secondary" id="installation-cancel" type="button">Annuleren</button><button id="installation-save" type="submit">Opslaan</button></div></form>
 </section>
 <!-- Eén camera-input en één viewer voor alle inspectieonderdelen. -->
 <input accept="image/*" aria-label="Foto maken" capture="environment" class="hidden" id="epc-camera-input" type="file"/>
@@ -401,7 +427,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js">
 </script>
 <script src="js/config.js?v=1"></script>
-<script src="js/app.js?v=wizard-ui-3">
+<script src="js/app.js?v=cooling-wizard-20261109">
 </script>
 <script>
 /* Installable app shell. Registration never blocks login or dossier loading.
