@@ -621,28 +621,55 @@ main{padding-bottom:24px!important}
 .epc-wizard-step:has(.epc-wizard-other) .epc-wizard-grid{flex:0 0 auto;align-content:start}
 .epc-wizard-step:has(.epc-wizard-other) .epc-wizard-choice{aspect-ratio:1/1}
 
-/* New dossier: three-page wizard, matching the existing EPC Buddy visual language. */
-.dossier-new-wizard{min-height:calc(100dvh - 155px);display:flex;flex-direction:column;padding:20px 16px!important}
-.dossier-new-wizard.hidden{display:none!important}
-.dossier-wizard-top{display:flex;align-items:center;gap:12px;margin-bottom:22px}
-.dossier-wizard-top h2{font-size:17px;margin:0;flex:1}
-.dossier-wizard-top small{color:#8194a6;font-weight:700}
-#dossier-wizard-form{display:flex;flex-direction:column;flex:1;gap:14px}
-.dossier-wizard-step{display:flex;flex-direction:column;gap:22px}
-.dossier-wizard-step.hidden{display:none!important}
-.dossier-wizard-step label,.dossier-wizard-label{display:flex;flex-direction:column;gap:9px;font-size:12px;font-weight:800;color:#182e42}
-.dossier-wizard-step input,.dossier-wizard-step textarea{box-sizing:border-box;width:100%;background:#dcf8eb;border:1px solid transparent;border-radius:8px;min-height:44px;padding:12px;font-size:14px;color:#092c4b;font-weight:500}
-.dossier-wizard-step textarea{min-height:100px;resize:vertical}
-.dossier-wizard-step input:focus,.dossier-wizard-step textarea:focus{outline:2px solid #0b6c83;outline-offset:1px}
-.dossier-type-choices{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px}
-.dossier-type-choices button{aspect-ratio:1/1;border:0;border-radius:5px;background:#dcf8eb;color:#082e50;font-weight:800;cursor:pointer}
-.dossier-type-choices button.selected{background:#082e50;color:white}
-.dossier-wizard-bottom{margin-top:auto;display:flex;justify-content:flex-end;padding-top:22px}
-.dossier-wizard-bottom button{background:#082e50;color:#fff;border:0;border-radius:7px;min-width:116px;min-height:45px;font-weight:700}
-.dossier-wizard-bottom button.hidden{display:none!important}
+/* The unknown-thickness choice has exactly the same square geometry as all
+   other wizard choices, and never stretches across the full content width. */
+.epc-wizard-unknown{
+ width:calc((100% - 10px)/3)!important;
+ aspect-ratio:1/1;
+ min-height:0!important;
+ flex:none;
+ align-self:flex-start;
+ margin:auto 0 12px!important;
+ padding:6px;
+ border-radius:4px!important;
+ display:grid;
+ place-items:center;
+ font-size:clamp(10px,2.8vw,12px);
+ font-weight:800;
+}
+@media(max-width:350px){.epc-wizard-unknown{width:calc((100% - 5px)/2)!important}}
+/* Error message stays on the final name step so it can be corrected in place. */
+.epc-wizard-name-error{font-size:12px;font-weight:700;color:#b42332;margin:0 0 8px}
+.epc-wizard-final-input[aria-invalid="true"]{border:2px solid #b42332;background:#fff}
 
-/* Hide Next on dossier step 1 even before JavaScript initializes. */
-#dossier-wizard-form:has([data-dossier-step="0"]:not(.hidden)) #dossier-wizard-next{display:none!important}
+/* Verwarmingswizards: leesbare tegeltekst en gegroepeerde toestelgegevens */
+.epc-heating-wizard .epc-wizard-choice{overflow-wrap:normal;word-break:normal;hyphens:auto;font-size:clamp(9px,2.5vw,11px);padding:5px 3px;line-height:1.25}
+.epc-heating-fields{display:flex;flex-direction:column;gap:13px;width:100%;padding:12px 0 18px}
+.epc-heating-field{display:flex;flex-direction:column;gap:6px;font-weight:700;font-size:13px;color:#12334c}
+.epc-heating-field .epc-wizard-input{width:100%;box-sizing:border-box;font-weight:400}
+.epc-heating-field textarea.epc-wizard-input{min-height:85px;resize:vertical}
 
-/* Dossierwizard: same back arrow as construction wizard; never on first step. */
-#dossier-wizard-prev.hidden{display:none!important}
+/* Overzicht en afzonderlijke bewerking van bestaande installaties */
+.epc-installation-overview{background:#fff;border-radius:13px;padding:12px;display:flex;flex-direction:column;gap:14px;min-height:300px}
+.epc-overview-hint{font-size:12px;color:#49657a;margin:0 0 4px}
+.epc-overview-field{display:flex;flex-direction:column;gap:6px}
+.epc-overview-label{font-size:12px;font-weight:700;color:#092f50}
+.epc-overview-value{display:flex;justify-content:space-between;align-items:center;text-align:left;gap:10px;width:100%;min-height:43px;padding:10px;border:0;border-radius:6px;background:#d9f7e9;color:#092f50;font-weight:600;overflow-wrap:anywhere;cursor:pointer}
+.epc-overview-value .row-chevron{flex:none}
+.epc-overview-editor{display:flex;flex-direction:column;gap:9px;padding:10px;background:#f2f7fa;border-radius:8px}
+.epc-overview-editor .epc-wizard-input{width:100%;box-sizing:border-box}
+.epc-overview-choices{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px}
+.epc-overview-choices .epc-wizard-choice{min-height:65px;font-size:10px;hyphens:auto;overflow-wrap:normal;word-break:normal}
+.epc-overview-save{margin-top:8px;width:100%}
+
+/* Constructie-overzicht: dezelfde interactie als bij installaties */
+.epc-construction-overview{background:#fff;border-radius:16px;padding:22px 18px;margin:12px 0 30px;display:flex;flex-direction:column;gap:14px}
+.epc-construction-overview>p{font-size:12px;color:#315578;margin:0 0 6px}
+.epc-overview-row{display:flex;flex-direction:column;gap:6px}
+.epc-overview-row>strong{font-size:12px;color:#092d4d}
+.epc-overview-value{border:0;border-radius:6px;background:#d9f7e9;color:#052b4d;padding:14px 12px;min-height:50px;text-align:left;font-weight:700;font-size:15px;cursor:pointer;width:100%;overflow-wrap:anywhere}
+.epc-overview-value:after{content:'›';float:right;font-size:24px;line-height:18px;color:#668aa4}
+.epc-overview-inline{display:flex;flex-direction:column;gap:10px;padding:8px 0}
+.epc-overview-inline.hidden{display:none}
+.epc-overview-inline input,.epc-overview-inline select,.epc-overview-inline textarea{width:100%;box-sizing:border-box;min-height:44px}
+.epc-overview-save{background:#082f52;color:#fff;border:0;border-radius:8px;padding:15px;font-weight:700;margin-top:10px;cursor:pointer}

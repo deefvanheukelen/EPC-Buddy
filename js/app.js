@@ -1,4 +1,4 @@
-const epcIcons={"Voorgevel": "voorgevel.svg", "Achtergevel": "achtergevel.svg", "Linkergevel": "linkergevel.svg", "Rechtergevel": "rechtergevel.svg", "Hellend dak voor": "hellend-dak-voor.svg", "Hellend dak achter": "hellend-dak-achter.svg", "Hellend dak links": "hellend-dak-links.svg", "Hellend dak rechts": "hellend-dak-rechts.svg", "Plat dak": "plat-dak.svg", "Plafond": "plafond.svg", "Vloer": "vloer.svg", "Opwekker verwarming": "opwekker-verwarming.svg", "Actieve koeling": "actieve-koeling.svg", "Opwekker sanitair warm water": "opwekker-sanitair-warm-water.svg", "Continue ventilatie-eenheid": "continu-draaiend-ventilatietoestel.svg", "Ventilatie - Ruimte": "ventilatie-ruimte.svg", "Zonneboiler": "zonneboiler.svg", "PV-panelen": "pv-panelen.svg", "Verlichting": "verlichting.svg"};
+const epcIcons={"Voorgevel": "voorgevel.svg", "Achtergevel": "achtergevel.svg", "Linkergevel": "linkergevel.svg", "Rechtergevel": "rechtergevel.svg", "Hellend dak voor": "hellend-dak-voor.svg", "Hellend dak achter": "hellend-dak-achter.svg", "Hellend dak links": "hellend-dak-links.svg", "Hellend dak rechts": "hellend-dak-rechts.svg", "Plat dak": "plat-dak.svg", "Plafond": "plafond.svg", "Vloer": "vloer.svg", "Opwekker verwarming": "opwekker-verwarming.svg", "Verwarmingsinstallatie": "verwarmingsinstallatie.svg", "Actieve koeling": "actieve-koeling.svg", "Opwekker sanitair warm water": "opwekker-sanitair-warm-water.svg", "Opwekker SWW": "opwekker-sanitair-warm-water.svg", "Ventilatie-unit": "continu-draaiend-ventilatietoestel.svg", "Ventilatieruimte": "ventilatie-ruimte.svg", "Continue ventilatie-eenheid": "continu-draaiend-ventilatietoestel.svg", "Ventilatie - Ruimte": "ventilatie-ruimte.svg", "Zonneboiler": "zonneboiler.svg", "PV-panelen": "pv-panelen.svg", "Verlichting": "verlichting.svg"};
 function iconFor(name){const img=document.createElement('img');img.src='ico/'+(epcIcons[name]||'gevelconstructie.svg');img.alt='';img.className='epc-item-icon';img.loading='lazy';return img}
 (()=>{'use strict';
 const $=id=>document.getElementById(id), show=(id,on=true)=>$(id).classList.toggle('hidden',!on);let db=null,user=null,workspace=null,current=null,activeDossier=null,activeFacade=null,activeConstruction=null,activeEnvelope=null,activeEnvelopeRecord=null,activeEnvelopeConstruction=null,activeInstallationSection=null,activeInstallation=null,routeToken=0,authBootstrapped=false,activeScreen='auth',mode='login',items=[],sortBy='date';
@@ -97,140 +97,7 @@ async function load(){if(!workspace)return;const {data,error}=await db.from('epc
 function dossierType(d){const t=String(d.dossier_type||d.type||d.certificate_type||d.epc_type||d.destination||'RES').toLowerCase();return t.includes('knr')?'kNR':t==='gd'||t.includes('gemeen')?'GD':'RES'}
 function render(){const q=$('search').value.toLocaleLowerCase(),year=$('year-filter').value,types=[...document.querySelectorAll('.filter-check input:checked')].map(c=>c.value);let results=items.filter(d=>(year==='all'||String(d.inspection_date||'').startsWith(year))&&types.includes(dossierType(d))&&[d.dossier_number,d.client_name,...Object.values(d.property_address||{})].join(' ').toLocaleLowerCase().includes(q));const dir=$('sort-direction').value==='asc'?1:-1;results.sort((a,b)=>dir*(sortBy==='name'?String(a.dossier_number||'').localeCompare(String(b.dossier_number||''),'nl',{numeric:true}):String(a.inspection_date||a.updated_at||'').localeCompare(String(b.inspection_date||b.updated_at||''))));$('dossiers').replaceChildren();if(!results.length){const empty=document.createElement('div');empty.className='empty-state';empty.innerHTML='<span class="empty-icon">▤</span><p>Geen dossiers gevonden.<br>Maak een dossier aan.</p>';$('dossiers').append(empty);return}results.forEach(d=>{const row=document.createElement('button');row.type='button';row.className='dossier-row';row.onclick=()=>open(d.id);const type=dossierType(d),tag=document.createElement('span');tag.className='type-tag type-'+type;tag.textContent=type;const txt=document.createElement('span');txt.className='dossier-row-text';const strong=document.createElement('strong');strong.textContent=d.dossier_number?'Dossier '+d.dossier_number:'Dossier zonder nummer';const address=document.createElement('small');const a=d.property_address||{};address.textContent=[a.street,a.number,[a.postal,a.city].filter(Boolean).join(' ')].filter(Boolean).join(', ');const date=document.createElement('small');date.textContent='Bezoek: '+(d.inspection_date?new Date(d.inspection_date+'T12:00:00').toLocaleDateString('nl-BE'):'—');txt.append(strong,address,date);const chevron=document.createElement('span');chevron.className='row-chevron';chevron.textContent='›';row.append(tag,txt,chevron);$('dossiers').append(row)})}
 const f=$('dossier-form');function field(name){return f.elements.namedItem(name)}
-function edit(d){current=d?.id||null;f.reset();$('editor-title').textContent=d?'Dossier '+(d.dossier_number||''):'Nieuw dossier';show('delete-dossier',!!d);$('back').setAttribute('aria-label',d?'Terug naar dossier':'Terug naar dossiers');screen('editor');show('dossier-new-wizard',!d);show('dossier-form',!!d);if(!d)resetDossierWizard();if(d){for(const k of ['dossier_number','inspection_date','client_kind','client_name','client_vat_number','client_phone','client_email'])field(k).value=d[k]||'';for(const [prefix,obj] of [['client',d.client_address],['property',d.property_address]])for(const k of ['street','number','postal','city'])field(prefix+'_'+k).value=obj?.[k]||'';$('same').checked=!!d.client_address_same_as_property;field('dossier_type').value=d.dossier_type||'RES';field('remarks').value=d.remarks||''}toggle()}
-
-// -----------------------------------------------------------------------------
-// Dossierwizard: ONLY for creating new dossiers. Existing dossier editing keeps
-// its original form to avoid modifying or deleting legacy client/address fields.
-// Never interpolate user input into HTML. Supabase RLS remains authoritative.
-// -----------------------------------------------------------------------------
-const dossierWizard=$('dossier-wizard-form');
-let dossierStep=0,dossierTypeChoice='';
-const dossierSteps=[...document.querySelectorAll('[data-dossier-step]')];
-function dossierWizardField(name){return dossierWizard.elements.namedItem(name)}
-function resetDossierWizard(){
- dossierWizard.reset();dossierStep=0;dossierTypeChoice='';renderDossierWizard();
-}
-function renderDossierWizard(){
- const headings=['Dossiergegevens','Te certificeren pand','Opdrachtgever'];
- dossierSteps.forEach((el,i)=>{el.classList.toggle('hidden',i!==dossierStep);el.setAttribute('aria-hidden',String(i!==dossierStep));});
- $('dossier-wizard-heading').textContent=headings[dossierStep];
- $('dossier-wizard-count').textContent=(dossierStep+1)+' / 3';
- show('dossier-wizard-prev',dossierStep>0);
- show('dossier-wizard-next',dossierStep===1);
- show('dossier-wizard-save',dossierStep===2);
- document.querySelectorAll('[data-type]').forEach(btn=>{
-  const selected=btn.dataset.type===dossierTypeChoice;
-  btn.classList.toggle('selected',selected);
-  btn.setAttribute('aria-pressed',String(selected));
- });
-}
-// Select a dossier type to proceed directly to step 2, but never skip
-// the required dossier name and inspection date. Event delegation also
-// supports taps on the text inside a type button.
-// Check dossier names within the signed-in user's workspace, including soft-deleted
-// dossiers: a name is not silently reused while its old record still exists.
-async function dossierNameExists(name){
- if(!workspace||!user)throw new Error('Log eerst in om de dossiernaam te controleren.');
- const {data,error}=await db.from('epc_dossiers')
-  .select('id,dossier_number,title')
-  .eq('workspace_id',workspace)
-  .limit(1000);
- if(error)throw error;
- const normalized=name.trim().toLocaleLowerCase('nl-BE');
- return (data||[]).some(d=>
-  [d.dossier_number,d.title].some(v=>String(v??'').trim().toLocaleLowerCase('nl-BE')===normalized)
- );
-}
-function selectDuplicateDossierName(){
- const field=dossierWizardField('number');
- note('Er bestaat al een dossier met deze naam. Kies een andere dossiernaam.');
- field.focus();field.select();
-}
-let dossierTypeChecking=false;
-dossierWizard.addEventListener('click', async event=>{
- const btn=event.target.closest('button[data-type]');
- if(!btn || !dossierWizard.contains(btn) || dossierStep!==0 || dossierTypeChecking)return;
- const number=dossierWizardField('number');
- const date=dossierWizardField('date');
- for(const el of [number,date]){
-  if(!el.value.trim() || !el.checkValidity()){
-   el.reportValidity();el.focus();
-   note(el===number?'Vul eerst de dossiernaam in.':'Vul eerst de datum van het plaatsbezoek in.');
-   return;
-  }
- }
- dossierTypeChecking=true;
- const checkedName=number.value.trim();
- try{
-  if(await dossierNameExists(checkedName)){
-   selectDuplicateDossierName();return;
-  }
-  // A user can change the name while the network request is running.
-  if(dossierStep!==0 || number.value.trim()!==checkedName)return;
-  dossierTypeChoice=btn.dataset.type;
-  dossierStep=1;
-  renderDossierWizard();
- }catch(error){err(error);note('Controle van de dossiernaam mislukt. Probeer opnieuw.');}
- finally{dossierTypeChecking=false;}
-});
-$('dossier-wizard-prev').onclick=()=>{if(dossierStep>0){dossierStep--;renderDossierWizard()}};
-function validateDossierStep(){
- const names=[['number','date'],['street_line','postal_city'],['surname','given','email']][dossierStep];
- for(const name of names){const el=dossierWizardField(name);
-  if(!el.checkValidity()){el.reportValidity();return false}
- }
- if(dossierStep===0&&!dossierTypeChoice){note('Kies eerst het type dossier.');return false}
- return true;
-}
-$('dossier-wizard-next').onclick=()=>{
- if(!validateDossierStep())return;
- dossierStep=Math.min(2,dossierStep+1);renderDossierWizard();
-};
-// Keep separate street, house number and city in the existing JSON address
-// structure. An unparseable address is preserved verbatim rather than lost.
-function splitStreetLine(raw){
- const s=raw.trim();
- const m=s.match(/^(.*?)\s+(\d+[A-Za-z0-9\/-]*)(?:\s+(?:bus|bte|box)\s*(.+))?$/i);
- return m?{street:m[1],number:m[2],bus:m[3]||''}:{street:s,number:'',bus:''};
-}
-function splitPostalCity(raw){
- const s=raw.trim();const m=s.match(/^(\d{4})\s+(.+)$/);
- return m?{postal:m[1],city:m[2]}:{postal:'',city:s};
-}
-dossierWizard.onsubmit=async event=>{
- event.preventDefault();
- if(dossierStep!==2||!validateDossierStep()||!dossierTypeChoice)return;
- if(!workspace||!user){note('Log eerst in om een dossier op te slaan.');return}
- // Recheck immediately before saving to catch a name created in another session.
- try{if(await dossierNameExists(dossierWizardField('number').value)){dossierStep=0;renderDossierWizard();selectDuplicateDossierName();return;}}
- catch(error){err(error);note('Controle van de dossiernaam mislukt.');return;}
- const addr={...splitStreetLine(dossierWizardField('street_line').value),...splitPostalCity(dossierWizardField('postal_city').value)};
- const first=dossierWizardField('given').value.trim(),last=dossierWizardField('surname').value.trim();
- const payload={
-  workspace_id:workspace,created_by:user.id,
-  dossier_number:dossierWizardField('number').value.trim(),
-  inspection_date:dossierWizardField('date').value,
-  dossier_type:dossierTypeChoice,
-  property_address:addr,
-  remarks:dossierWizardField('remark').value.trim()||null,
-  client_name:[first,last].filter(Boolean).join(' '),
-  client_phone:dossierWizardField('phone').value.trim()||null,
-  client_email:dossierWizardField('email').value.trim()||null,
-  client_kind:'particulier',client_vat_number:null,
-  client_address_same_as_property:false,client_address:{},
-  title:dossierWizardField('number').value.trim()
- };
- const save=$('dossier-wizard-save');save.disabled=true;
- beginEpcLoading('Dossier opslaan…');
- try{
-  const {data,error}=await db.from('epc_dossiers').insert(payload).select('id').single();
-  if(error)throw error;
-  current=data.id;await load();await open(data.id);
-  note('Dossier opgeslagen.');
- }catch(error){err(error)}finally{save.disabled=false;endEpcLoading()}
-};
-
+function edit(d){current=d?.id||null;f.reset();$('editor-title').textContent=d?'Dossier '+(d.dossier_number||''):'Nieuw dossier';show('delete-dossier',!!d);$('back').setAttribute('aria-label',d?'Terug naar dossier':'Terug naar dossiers');screen('editor');if(d){for(const k of ['dossier_number','inspection_date','client_kind','client_name','client_vat_number','client_phone','client_email'])field(k).value=d[k]||'';for(const [prefix,obj] of [['client',d.client_address],['property',d.property_address]])for(const k of ['street','number','postal','city'])field(prefix+'_'+k).value=obj?.[k]||'';$('same').checked=!!d.client_address_same_as_property;field('dossier_type').value=d.dossier_type||'RES'}toggle()}
 let dossierOpenVersion=0;
 async function open(id){
  const version=++dossierOpenVersion;
@@ -453,8 +320,42 @@ $('construction-add').onclick=async()=>{
 };
 $('construction-overlay').onclick=$('construction-drawer-close').onclick=closeConstructionDrawer;
 async function loadConstructionForEdit(id){const {data,error}=await db.from('epc_facade_constructions').select('*').eq('id',id).eq('facade_id',activeFacade.id).eq('dossier_id',activeDossier.id).single();if(error)return err(error);editConstruction(data)}
+// Gedeelde detailweergave voor bestaande gevel-, dak-, plafond- en vloerconstructies.
+// Het originele formulier blijft de bron voor validatie en databaseopslag.
+function showConstructionOverview(form, editorId, enabled){
+ const old=document.getElementById(editorId+'-overview');if(old)old.remove();
+ form.classList.toggle('hidden',enabled);
+ if(!enabled)return;
+ const panel=document.createElement('div');panel.id=editorId+'-overview';panel.className='epc-construction-overview';
+ const hint=document.createElement('p');hint.textContent='Tik op een gegeven om het te bekijken of aan te passen.';panel.append(hint);
+ const fields=[...form.querySelectorAll('label')].filter(label=>{
+  const input=label.querySelector('input[name],select[name],textarea[name]');return input&&!input.disabled&&!label.classList.contains('hidden')&&!label.closest('[data-overview-exclude]');
+ });
+ let active=null;
+ const refresh=()=>{for(const row of panel.querySelectorAll('[data-field-row]')){
+  const el=form.querySelector('[name="'+row.dataset.fieldRow+'"]');if(!el)continue;
+  const value=row.querySelector('.epc-overview-value');if(value){const opt=el.tagName==='SELECT'?el.selectedOptions[0]:null;value.textContent=(opt?.textContent&&el.value?opt.textContent:el.value)||'Niet ingevuld';}
+ }};
+ for(const label of fields){
+  const original=label.querySelector('input[name],select[name],textarea[name]');
+  const row=document.createElement('div');row.className='epc-overview-row';row.dataset.fieldRow=original.name;
+  const title=document.createElement('strong');title.textContent=label.childNodes[0]?.textContent.trim()||original.name;
+  const value=document.createElement('button');value.type='button';value.className='epc-overview-value';
+  const editor=document.createElement('div');editor.className='epc-overview-inline hidden';
+  value.onclick=()=>{if(active&&active!==editor)active.classList.add('hidden');active=editor;editor.replaceChildren();
+   const control=original.cloneNode(true);control.removeAttribute('id');control.disabled=false;control.value=original.value;
+   const done=document.createElement('button');done.type='button';done.className='epc-wizard-next';done.textContent='Bevestigen';
+   done.onclick=()=>{if(control.type==='number'&&control.value&&!control.checkValidity()){note('Vul een geldig getal in.');return}original.value=control.value;editor.classList.add('hidden');refresh()};
+   editor.append(control,done);editor.classList.remove('hidden');control.focus();
+  };
+  row.append(title,value,editor);panel.append(row);
+ }
+ const save=document.createElement('button');save.type='button';save.className='epc-overview-save';save.textContent='Wijzigingen opslaan';
+ save.onclick=()=>{if(active&&!active.classList.contains('hidden')){note('Bevestig eerst het geopende gegeven.');return}form.requestSubmit()};panel.append(save);
+ form.before(panel);refresh();
+}
 const cf=$('construction-form');
-function editConstruction(d){activeConstruction=d||null;cf.reset();$('construction-heading').textContent=d?'Gevelconstructie':'Nieuwe gevelconstructie';show('construction-delete',!!d);if(d){for(const el of cf.elements){if(!el.name)continue;const value=d[el.name];el.value=value===null||value===undefined?'':typeof value==='boolean'?String(value):String(value)}}screen('construction-editor');if(d)wizardStop(cf);else wizardStart(cf,'facade');window.scrollTo({top:0,behavior:'instant'})}
+function editConstruction(d){activeConstruction=d||null;cf.reset();$('construction-heading').textContent=d?'Gevelconstructie':'Nieuwe gevelconstructie';show('construction-delete',!!d);if(d){for(const el of cf.elements){if(!el.name)continue;const value=d[el.name];el.value=value===null||value===undefined?'':typeof value==='boolean'?String(value):String(value)}}screen('construction-editor');if(d)wizardStop(cf);else wizardStart(cf,'facade');showConstructionOverview(cf,'construction-editor',!!d);window.scrollTo({top:0,behavior:'instant'})}
 $('construction-back').onclick=$('construction-cancel').onclick=()=>{screen('facade-page');loadConstructions()};
 $('construction-delete').onclick=async()=>{if(!activeConstruction||!confirm('Gevelconstructie "'+activeConstruction.name+'" verwijderen?'))return;const {error}=await db.from('epc_facade_constructions').update({deleted_at:new Date().toISOString()}).eq('id',activeConstruction.id).eq('facade_id',activeFacade.id).eq('dossier_id',activeDossier.id);if(error)return err(error);activeConstruction=null;screen('facade-page');await loadConstructions();await loadSectionPhotos('facade',activeFacade.id,'facade-page');note('Gevelconstructie verwijderd.')};
 cf.onsubmit=async e=>{e.preventDefault();if(!activeDossier||!activeFacade)return;const fd=new FormData(cf), payload={};for(const [key,val] of fd){const v=String(val).trim();payload[key]=v||null}payload.fully_glazed=payload.fully_glazed===null?null:payload.fully_glazed==='true';for(const key of ['insulation_thickness_mm','renovation_reference_year'])payload[key]=payload[key]===null?null:Number(payload[key]);$('construction-save').disabled=true;try{
@@ -581,7 +482,7 @@ function envelopeShow(name,record=null){
   if(!el.name||el.disabled||record[el.name]===undefined)continue;
   el.value=record[el.name]===null?'':String(record[el.name]);
  }
- show('envelope-delete',!!record);screen('envelope-editor');if(record)wizardStop(envelopeForm);else wizardStart(envelopeForm,kind);window.scrollTo({top:0,behavior:'instant'});
+ show('envelope-delete',!!record);screen('envelope-editor');if(record)wizardStop(envelopeForm);else wizardStart(envelopeForm,kind);showConstructionOverview(envelopeForm,'envelope-editor',!!record);window.scrollTo({top:0,behavior:'instant'});
 }
 $('envelope-back').onclick=$('envelope-cancel').onclick=()=>{screen('envelope-page');loadEnvelopeConstructions()};
 $('envelope-delete').onclick=async()=>{
@@ -618,13 +519,14 @@ envelopeForm.onsubmit=async e=>{
 // Installaties: één sectie per type en meerdere items per sectie.
 // Formuliervelden komen uit de eerder opgegeven EPC Buddy-specificatie.
 // Waar exacte EPC-keuzelijsten niet vastliggen, gebruiken we een tekstveld.
-const installationKinds=new Map([['Opwekker verwarming','heating'],['Actieve koeling','cooling'],['Opwekker sanitair warm water','hot_water'],['Continue ventilatie-eenheid','ventilation_unit'],['Ventilatie - Ruimte','room_ventilation'],['Zonneboiler','solar_thermal'],['PV-panelen','pv'],['Verlichting','lighting']]);
+const installationKinds=new Map([['Verwarmingsinstallatie','heating_system'],['Opwekker verwarming','heating'],['Actieve koeling','cooling'],['Opwekker SWW','hot_water'],['Ventilatieruimte','room_ventilation'],['Ventilatie-unit','ventilation_unit'],['Zonneboiler','solar_thermal'],['PV-panelen','pv'],['Verlichting','lighting']]);
 const I=(key,label,type='text',options=null)=>({key,label,type,options});
 // Centrale formulierdefinities per installatietype. Geen ongeverifieerde EPC-keuzelijsten.
 // Eén centrale configuratie per installatietype. Opties zijn uitsluitend afkomstig
 // uit de door de gebruiker opgegeven EPC Buddy-specificaties.
 // Bij ontbrekende keuzewaarden blijft het veld voorlopig vrij invulbaar.
 const installationDefinitions={
+ heating_system:[],
  heating:[I('brand','Merk'),I('model','Type / model'),I('year','Referentiejaar fabricage','number'),
   I('generator','Type opwekker','select',['Centraal','Decentraal']),
   I('energy','Energiedrager','select',['Gas','Stookolie','Hout (overig)','Pellets','Kolen','Warmtenet','Elektriciteit']),
@@ -633,7 +535,7 @@ const installationDefinitions={
  cooling:[I('brand','Merk'),I('model','Type / model'),
   I('cooling','Type actieve koeling','select',['Geen','Onbekend','Onvolledig','Aanwezig']),
   I('generator','Type opwekker','select',['Lucht/Lucht','Water/Lucht','Bodem/Lucht','Lucht/Water','Water/Water','Bodem/Water']),
-  I('year','Referentiejaar fabricage','number'),I('refrigerant','Koelmiddel','select',['Onbekend','Gekend']),I('refrigerant_type','Type koelmiddel'),I('cooled_rooms','Direct gekoelde ruimtes')],
+  I('year','Referentiejaar fabricage','number'),I('refrigerant','Koelmiddel','select',['Onbekend','Gekend'])],
  hot_water:[I('type','Soort SWW','select',['Individueel','Collectief']),
   I('heating','Gekoppeld aan verwarming','heating-link'),I('brand','Merk'),I('model','Type / model'),
   I('year','Referentiejaar fabricage','number'),I('energy','Energiedrager'),
@@ -658,7 +560,7 @@ function installationInput(def,value){
  }
  input.value=value??'';label.append(input);return label;
 }
-async function openInstallationSection(section){activeInstallationSection=section;activeInstallation=null;$('installation-title').textContent=section.name;$('installation-icon').replaceChildren(iconFor(section.name));screen('installation-page');await loadInstallationEntries();await loadSectionPhotos('installation',section.id,'installation-page');window.scrollTo({top:0,behavior:'instant'})}
+async function openInstallationSection(section){if(section.kind==='hot_water')section={...section,name:'Opwekker SWW'};if(section.kind==='ventilation_unit')section={...section,name:'Ventilatie-unit'};if(section.kind==='room_ventilation')section={...section,name:'Ventilatieruimte'};activeInstallationSection=section;activeInstallation=null;$('installation-title').textContent=section.name;$('installation-icon').replaceChildren(iconFor(section.name));screen('installation-page');await loadInstallationEntries();await loadSectionPhotos('installation',section.id,'installation-page');window.scrollTo({top:0,behavior:'instant'})}
 async function loadInstallationEntries(){
  const {data,error}=await db.from('epc_installation_entries').select('*').eq('dossier_id',activeDossier.id).eq('section_id',activeInstallationSection.id).is('deleted_at',null).order('created_at',{ascending:true});
  if(error)return err(error);const host=$('installation-list');host.replaceChildren();
@@ -672,7 +574,27 @@ async function loadInstallationEntries(){
   row.append(b,del);host.append(row);
  }
 }
+async function checkInstallationPrerequisite(kind){
+ if(!['heating_system','ventilation_unit'].includes(kind))return true;
+ const required=kind==='heating_system'?'heating':'room_ventilation';
+ const {data:sections,error}=await db.from('epc_installation_sections').select('id').eq('dossier_id',activeDossier.id).eq('kind',required).is('deleted_at',null);
+ if(error){err(error);return false}
+ if(!sections?.length){note(kind==='heating_system'?'Voeg eerst het onderdeel Opwekker verwarming toe en maak minstens één opwekker aan.':'Voeg eerst Ventilatieruimte toe en maak minstens één ruimte met Mechanisch, permanent aan.');return false}
+ const {data:entries,error:e}=await db.from('epc_installation_entries').select('id,details').eq('dossier_id',activeDossier.id).in('section_id',sections.map(x=>x.id)).is('deleted_at',null);
+ if(e){err(e);return false}
+ const valid=kind==='heating_system'?!!entries?.length:(entries||[]).some(x=>x.details?.type==='Mechanisch, permanent');
+ if(!valid)note(kind==='heating_system'?'Maak eerst minstens één opwekker verwarming aan.':'Maak eerst minstens één ventilatieruimte met Mechanisch, permanent aan.');
+ return valid;
+}
 async function editInstallation(entry=null){
+ if(entry){return openInstallationOverview(entry)}
+ if(activeInstallationSection.kind==='lighting'&&dossierType(activeDossier)==='RES'){note('Verlichting is enkel beschikbaar voor GD en kNR.');return}
+ if(!(await checkInstallationPrerequisite(activeInstallationSection.kind)))return;
+ if(['heating','heating_system'].includes(activeInstallationSection.kind)){return startHeatingWizard(null)}
+ if(activeInstallationSection.kind==='cooling'){return startCoolingWizard()}
+ if(activeInstallationSection.kind==='hot_water'){return startSwwWizard()}
+ if(['solar_thermal','pv','lighting'].includes(activeInstallationSection.kind)){return startSimpleInstallationWizard()}
+ if(['room_ventilation','ventilation_unit'].includes(activeInstallationSection.kind))return startVentilationWizard();
  activeInstallation=entry;const form=$('installation-form');form.reset();$('installation-edit-title').textContent=entry?activeInstallationSection.name:'Nieuwe '+activeInstallationSection.name.toLocaleLowerCase('nl-BE');$('installation-edit-icon').replaceChildren(iconFor(activeInstallationSection.name));
  form.elements.namedItem('name').value=entry?.name||'';form.elements.namedItem('remarks').value=entry?.remarks||'';
  const host=$('installation-fields');host.replaceChildren();
@@ -693,122 +615,149 @@ async function editInstallation(entry=null){
   const configured=def.type==='roof-link'?{...def,options:roofNames}:def.type==='heating-link'?{...def,options:heatingNames}:def;
   host.append(installationInput(configured,entry?.details?.[def.key]));
  }
- show('installation-delete',!!entry);screen('installation-editor');if(!entry&&activeInstallationSection.kind==='heating')heatingWizardOpen();else if(!entry&&activeInstallationSection.kind==='cooling')coolingWizardOpen();else heatingWizardClose();window.scrollTo({top:0,behavior:'instant'});
+ show('installation-delete',!!entry);screen('installation-editor');window.scrollTo({top:0,behavior:'instant'});
 }
-// Wizard voor nieuwe verwarmingsopwekkers; bewerken blijft het bestaande formulier.
-let heatingWizardStep=0;
-const heatingWizardKeys=['generator','energy','label','pump','sensor','details','name'];
-function heatingWizardEnabled(){return !activeInstallation&&activeInstallationSection?.kind==='heating'}
-function heatingWizardClose(){
- coolingWizardStep=0;coolingWizardRooms=[];
- $('installation-wizard').classList.add('hidden');$('installation-form').classList.remove('epc-form-wizard-hidden');
+// Bestaande installaties openen altijd in één overzicht; de wizard is alleen voor nieuwe items.
+let installationOverview=null;
+async function openInstallationOverview(entry){
+ activeInstallation=entry;heatingWizard=null;coolingWizard=null;swwWizard=null;
+ const kind=activeInstallationSection.kind;
+ const generators=[];
+ if(['heating_system','hot_water'].includes(kind)){
+  const linkKind=kind==='hot_water'?'heating_system':'heating';
+  const {data:sections,error}=await db.from('epc_installation_sections').select('id').eq('dossier_id',activeDossier.id).eq('kind',linkKind).is('deleted_at',null);
+  if(error)return err(error);
+  for(const section of sections||[]){const {data,error:e}=await db.from('epc_installation_entries').select('id,name').eq('dossier_id',activeDossier.id).eq('section_id',section.id).is('deleted_at',null);if(e)return err(e);generators.push(...(data||[]))}
+ }
+ let ventRooms=[];
+ if(kind==='ventilation_unit')ventRooms=await fetchVentRooms();
+ let roofs=[];if(['solar_thermal','pv'].includes(kind))roofs=await fetchSolarRoofs();
+ installationOverview={entry,systems:generators,ventRooms,values:{...(entry.details||{}),name:entry.name,remarks:entry.remarks||''},generators:generators.map(x=>x.name),roofs,editing:null};
+ $('installation-edit-title').textContent=entry.name;
+ $('installation-edit-icon').replaceChildren(iconFor(activeInstallationSection.name));
+ show('installation-form',false);show('installation-wizard',true);
+ screen('installation-editor');renderInstallationOverview();
 }
-function heatingWizardOpen(){
- heatingWizardStep=0;$('installation-form').classList.add('epc-form-wizard-hidden');
- $('installation-wizard').classList.remove('hidden');heatingWizardRender();
+function overviewFields(){
+ const o=installationOverview,kind=activeInstallationSection.kind;
+ if(kind==='hot_water'){
+  const v=o.values,fields=[{key:'name',title:'Naamgeving'},{key:'type',title:'Soort SWW',choices:['Individueel','Collectief']}];
+  if(v.type==='Individueel')fields.push({key:'heating',title:'Verwarmingsinstallatie',choices:['Los van CV',...o.generators]});
+  if(v.type==='Collectief'||v.heating==='Los van CV'||!v.heating){
+   fields.push({key:'energy',title:'Energiedrager',choices:['Gas','Stookolie','Elektriciteit']});
+   if(['Gas','Elektriciteit'].includes(v.energy))fields.push({key:'sww_generator',title:'Type opwekker',choices:v.energy==='Gas'?['WP boiler','Ketel']:['WP boiler','Elektrische weerstandsverwarming']});
+  }
+  fields.push({key:'tank_present',title:'Voorraadvat',choices:['Nee','Ja']});
+  if(v.tank_present==='Ja'){
+   fields.push({key:'tank_method',title:'Volumebepaling',choices:['Omtrek + hoogte','Volume invoer']});
+   if(v.tank_method==='Omtrek + hoogte')fields.push({key:'tank_circumference',title:'Omtrek (cm)'},{key:'tank_height',title:'Hoogte (cm)'});
+   if(v.tank_method==='Volume invoer')fields.push({key:'tank',title:'Volume (liter)'});
+   fields.push({key:'tank_insulation',title:'Isolatie voorraadvat',choices:['Nee','Ja','Onbekend']});
+  }
+  fields.push({key:'pipes_type',title:'Leidingen',choices:['Circulatieleidingen','Gewone leidingen']});
+  if(v.pipes_type==='Circulatieleidingen')fields.push({key:'pipes_insulation',title:'Isolatie leidingen',choices:['Geïsoleerd','Niet geïsoleerd','Onbekend']});
+  if(v.pipes_type==='Gewone leidingen')fields.push({key:'pipes_length',title:'Leidinglengte',choices:['> 5 m','≤ 5 m']});
+  fields.push({key:'remarks',title:'Opmerking'});return fields;
+ }
+ if(kind==='room_ventilation'){
+  const v=o.values;return [{key:'name',title:'Naamgeving'},{key:'room',title:'Ruimte',choices:VENT_ROOMS},...(v.room==='Andere'?[{key:'custom_room',title:'Andere ruimte',type:'text'}]:[]),
+   {key:'room_type',title:'Ruimtetype',choices:['Natte ruimte','Droge ruimte']},
+   {key:'type',title:v.room_type==='Natte ruimte'?'Afvoer':'Toevoer',choices:v.room_type==='Natte ruimte'?VENT_WET:VENT_DRY}];
+ }
+ if(kind==='ventilation_unit')return [{key:'name',title:'Naamgeving'},{key:'brand',title:'Merk'},{key:'model',title:'Type / model'},
+  {key:'scope',title:'Individueel / collectief',choices:['Individueel','Collectief']},
+  {key:'type',title:'Ventilatie',choices:['Toevoer en afvoer','Enkel toevoer','Enkel afvoer']},
+  {key:'control',title:'Regeling',choices:VENT_CONTROLS},
+  {key:'served_rooms',title:'Bediende ventilatieruimtes',type:'vent-rooms'}, {key:'remarks',title:'Opmerking'}];
+ if(kind==='cooling'){
+  const t=dossierType(activeDossier),v=o.values;
+  const fields=[{key:'name',title:'Naamgeving'}];
+  if(t==='kNR'){fields.push({key:'cooling',title:'Type actieve koeling',choices:COOL_TYPES},{key:'generator',title:'Type opwekker',choices:COOL_GENERATORS},{key:'refrigerant',title:'Koelmiddel',choices:['Onbekend','Gekend']});if(v.refrigerant==='Gekend')fields.push({key:'refrigerant_type',title:'Type koelmiddel'});}
+  if(t==='RES')fields.push({key:'rooms',title:'Direct gekoelde ruimtes',type:'cooling-rooms'});
+  fields.push({key:'brand',title:'Merk'},{key:'model',title:'Type / model'});
+  if(t==='kNR')fields.push({key:'year',title:'Referentiejaar fabricage'});
+  fields.push({key:'remarks',title:'Opmerking'});return fields;
+ }
+ if(['heating','heating_system'].includes(kind)){
+  const old=heatingWizard;
+  heatingWizard={kind,values:o.values,generators:o.generators};
+  const steps=heatingSteps();heatingWizard=old;
+  const fields=[];
+  for(const step of steps){
+   if(step.key==='device_details'){
+    for(const [key,title] of [['brand','Merk'],['model','Type / model'],['year','Referentiejaar fabricage'],['remarks','Opmerking']])fields.push({key,title});
+   }else fields.push(step);
+  }
+  return fields;
+ }
+ return [{key:'name',title:'Naam'},...(installationDefinitions[kind]||[]).map(d=>({key:d.key,title:d.label,choices:d.type==='roof-link'?o.roofs:d.options,type:d.type})),{key:'remarks',title:'Opmerking'}];
 }
-function heatingWizardSet(key,value){$('installation-form').elements.namedItem(key).value=value}
-function heatingWizardGet(key){return $('installation-form').elements.namedItem(key)?.value||''}
-function heatingWizardNext(){heatingWizardStep=Math.min(6,heatingWizardStep+1);heatingWizardRender()}
-function heatingWizardName(){return ['CV',heatingWizardGet('brand').trim(),heatingWizardGet('model').trim()].filter(Boolean).join('-')}
-function heatingWizardRender(){
+function renderInstallationOverview(){
+ const o=installationOverview;if(!o)return;
  const host=$('installation-wizard');host.replaceChildren();
- const step=document.createElement('div');step.className='epc-wizard-step';
- const top=document.createElement('div');top.className='epc-wizard-top';
- if(heatingWizardStep>0){const back=document.createElement('button');back.type='button';back.className='epc-wizard-back';back.setAttribute('aria-label','Vorige stap');const img=document.createElement('img');img.src='ico/vorige-pijl.svg';img.alt='';back.append(img);back.onclick=()=>{heatingWizardStep--;heatingWizardRender()};top.append(back)}
- const heading=document.createElement('h2');heading.textContent=['Type opwekker','Energiedrager','Label','Pompregeling','Buitenvoeler','Toestelgegevens','Naamgeving'][heatingWizardStep];
- const progress=document.createElement('div');progress.className='epc-wizard-progress';progress.textContent=(heatingWizardStep+1)+' / 7';top.append(heading,progress);step.append(top);
- const key=heatingWizardKeys[heatingWizardStep];
- if(heatingWizardStep<5){
-  const select=$('installation-form').elements.namedItem(key);
-  const grid=document.createElement('div');grid.className='epc-wizard-grid';
-  for(const option of [...select.options].filter(x=>x.value)){
-   const button=document.createElement('button');button.type='button';button.className='epc-wizard-choice';button.textContent=option.textContent;
-   if(select.value===option.value)button.classList.add('selected');
-   button.onclick=()=>{heatingWizardSet(key,option.value);heatingWizardNext()};grid.append(button);
-  }step.append(grid);
- }else{
-  const group=document.createElement('div');group.className='epc-wizard-final';
-  const fields=heatingWizardStep===5?[['brand','Merk','text'],['model','Type / model','text'],['year','Referentiejaar fabricage','number'],['remarks','Opmerking','textarea']]:[['name','Naam opwekker','text']];
-  const controls={};
-  for(const [field,title,type] of fields){const label=document.createElement('label');label.textContent=title;const input=document.createElement(type==='textarea'?'textarea':'input');if(type!=='textarea')input.type=type;
-   input.className='epc-wizard-final-input';input.value=field==='name'?(heatingWizardGet('name')||heatingWizardName()):heatingWizardGet(field);
-   if(field==='name'){input.maxLength=120;input.required=true}if(field==='year'){input.min='0';input.max='9999';input.inputMode='numeric'}
-   label.append(input);group.append(label);controls[field]=input;
+ const root=document.createElement('div');root.className='epc-installation-overview';
+ const intro=document.createElement('p');intro.className='epc-overview-hint';intro.textContent='Tik op een gegeven om het te bekijken of aan te passen.';root.append(intro);
+ const fields=overviewFields();
+ // De naam is ook bij verwarmingswizards afzonderlijk bewerkbaar.
+ if(!fields.some(x=>x.key==='name'))fields.unshift({key:'name',title:'Naamgeving'});
+ for(const field of fields){
+  const row=document.createElement('div');row.className='epc-overview-field';
+  const label=document.createElement('div');label.className='epc-overview-label';label.textContent=field.title;row.append(label);
+  const value=o.values[field.key];
+  const button=document.createElement('button');button.type='button';button.className='epc-overview-value';
+  const shown=value===undefined||value===null||value===''?'Niet ingevuld':field.type==='vent-rooms'&&Array.isArray(value)?value.map(id=>o.ventRooms?.find(r=>r.id===id)?.name||id).join(', ')||'Geen':Array.isArray(value)?value.join(', '):String(value);
+  const span=document.createElement('span');span.textContent=shown;
+  const arrow=document.createElement('span');arrow.className='row-chevron';arrow.textContent='›';button.append(span,arrow);
+  button.onclick=()=>{o.editing=field.key;renderInstallationOverview()};row.append(button);
+  if(o.editing===field.key){
+   const editor=document.createElement('div');editor.className='epc-overview-editor';
+   let control;
+   const choices=field.choices;
+   if(field.type==='vent-rooms'){
+    control=document.createElement('div');control.className='epc-overview-choices';
+    for(const room of o.ventRooms||[]){const b=document.createElement('button');b.type='button';b.className='epc-wizard-choice'+((Array.isArray(value)&&value.includes(room.id))?' selected':'');b.textContent=room.name;b.onclick=()=>{const ids=new Set(o.values.served_rooms||[]);ids.has(room.id)?ids.delete(room.id):ids.add(room.id);o.values.served_rooms=[...ids];renderInstallationOverview()};control.append(b)}
+    editor.append(control);const done=document.createElement('button');done.type='button';done.className='epc-wizard-next';done.textContent='Bevestigen';done.onclick=()=>{o.editing=null;renderInstallationOverview()};editor.append(done);
+   }else if(field.type==='cooling-rooms'){
+    control=buildCoolingRoomPicker(Array.isArray(value)?value:[],selected=>{o.values.rooms=selected;o.editing=null;renderInstallationOverview()});editor.append(control);
+   }else if(Array.isArray(choices)&&choices.length){
+    control=document.createElement('div');control.className='epc-overview-choices';
+    for(const choice of choices){const b=document.createElement('button');b.type='button';b.className='epc-wizard-choice'+(String(value??'')===String(choice)?' selected':'');b.textContent=HW_SHORT[choice]||choice;b.title=choice;
+     b.onclick=()=>{if(activeInstallationSection.kind==='hot_water'&&o.values[field.key]!==choice){
+      if(field.key==='type')for(const k of ['heating','energy','sww_generator','heating_system_id'])delete o.values[k];
+      if(field.key==='heating'){delete o.values.heating_system_id;delete o.values.energy;delete o.values.sww_generator}
+      if(field.key==='energy')delete o.values.sww_generator;
+      if(field.key==='tank_present'&&choice==='Nee')for(const k of ['tank_method','tank','tank_circumference','tank_height','tank_insulation'])delete o.values[k];
+      if(field.key==='tank_method')for(const k of ['tank','tank_circumference','tank_height'])delete o.values[k];
+      if(field.key==='pipes_type'){delete o.values.pipes_insulation;delete o.values.pipes_length}
+     }if(activeInstallationSection.kind==='room_ventilation'&&field.key==='room'){o.values.room_type=VENT_WET_ROOMS.includes(choice)?'Natte ruimte':choice==='Andere'?'': 'Droge ruimte';delete o.values.type;if(choice!=='Andere')delete o.values.custom_room;}if(activeInstallationSection.kind==='room_ventilation'&&field.key==='room_type')delete o.values.type;o.values[field.key]=choice;o.editing=null;renderInstallationOverview()};control.append(b)}
+   }else{
+    const def=(installationDefinitions[activeInstallationSection.kind]||[]).find(d=>d.key===field.key);
+    if(def&&['select','roof-link','heating-link'].includes(def.type)){
+     control=document.createElement('select');control.className='epc-wizard-input';
+     const opts=[...(def.options||[])];if(value&&!opts.includes(value))opts.push(value);
+     for(const option of ['',...opts]){const el=document.createElement('option');el.value=option;el.textContent=option||'Maak een keuze';control.append(el)}
+    }else{control=document.createElement(field.key==='remarks'?'textarea':'input');control.className='epc-wizard-input';if(field.key==='year'||def?.type==='number')control.type='number'}
+    control.value=value??'';editor.append(control);
+    const apply=document.createElement('button');apply.type='button';apply.className='epc-wizard-next';apply.textContent='Bevestigen';apply.onclick=()=>{const v=control.value.trim();if(field.key==='name'&&!v){note('Vul een naam in.');control.focus();return}o.values[field.key]=v;o.editing=null;renderInstallationOverview()};editor.append(apply);
+   }
+   if(Array.isArray(choices)&&choices.length)editor.append(control);
+   const cancel=document.createElement('button');cancel.type='button';cancel.className='secondary';cancel.textContent='Annuleren';cancel.onclick=()=>{o.editing=null;renderInstallationOverview()};editor.append(cancel);row.append(editor);
   }
-  const actions=document.createElement('div');actions.className='epc-wizard-final-actions';
-  const cancel=document.createElement('button');cancel.type='button';cancel.className='epc-wizard-cancel';cancel.textContent='Annuleren';cancel.onclick=()=>{$('installation-edit-back').click()};actions.append(cancel);
-  const next=document.createElement('button');next.type='button';next.className='epc-wizard-next';next.textContent=heatingWizardStep===6?'Opslaan':'Volgende';
-  next.onclick=async()=>{
-   for(const [field] of fields){const value=controls[field].value.trim();if(field==='year'&&value&&(!/^\d{1,4}$/.test(value))){controls[field].focus();return}heatingWizardSet(field,value)}
-   if(heatingWizardStep===5){heatingWizardNext();return}
-   const name=heatingWizardGet('name');if(!name){controls.name.focus();return}
-   next.disabled=true;
-   try{
-    const {data,error}=await db.from('epc_installation_entries').select('id').eq('dossier_id',activeDossier.id).eq('section_id',activeInstallationSection.id).eq('name',name).is('deleted_at',null).limit(1);
-    if(error)throw error;
-    if(data?.length){let warning=group.querySelector('.epc-wizard-name-error');if(!warning){warning=document.createElement('p');warning.className='epc-wizard-name-error';warning.setAttribute('role','alert');controls.name.parentElement.after(warning)}warning.textContent='Er bestaat al een opwekker met deze naam. Kies een andere naam.';controls.name.focus();controls.name.select();return}
-    $('installation-form').requestSubmit();
-   }catch(error){err(error)}finally{next.disabled=false}
-  };actions.append(next);group.append(actions);step.append(group);
- }host.append(step);
+  root.append(row);
+ }
+ const save=document.createElement('button');save.type='button';save.className='epc-wizard-next epc-overview-save';save.textContent='Wijzigingen opslaan';save.onclick=saveInstallationOverview;root.append(save);
+ host.append(root);
 }
-// Koeling: verschillende aanmaak-wizards voor kNR, RES en GD.
-let coolingWizardStep=0,coolingWizardRooms=[];
-const coolingDefaultRooms=['LEEFRUIMTE','KEUKEN','BADKAMER','WASPLAATS','SLP1','SLP2','SLP3'];
-function coolingWizardType(){return dossierType(activeDossier)}
-function coolingWizardSteps(){return coolingWizardType()==='kNR'?['cooling','generator','refrigerant','details-knr','name']:coolingWizardType()==='GD'?['details','name']:['rooms','details','name']}
-function coolingWizardOpen(){
- coolingWizardStep=0;coolingWizardRooms=[];
- $('installation-form').classList.add('epc-form-wizard-hidden');$('installation-wizard').classList.remove('hidden');coolingWizardRender();
-}
-function coolingWizardField(key){return $('installation-form').elements.namedItem(key)}
-function coolingWizardGet(key){return coolingWizardField(key)?.value||''}
-function coolingWizardSet(key,value){const field=coolingWizardField(key);if(field)field.value=value}
-function coolingWizardSuggestedName(){return ['Koeling',coolingWizardGet('brand').trim(),coolingWizardGet('model').trim()].filter(Boolean).join('-')}
-function coolingWizardRender(){
- const steps=coolingWizardSteps(),key=steps[coolingWizardStep],host=$('installation-wizard');host.replaceChildren();
- const step=document.createElement('div');step.className='epc-wizard-step';const top=document.createElement('div');top.className='epc-wizard-top';
- if(coolingWizardStep>0){const back=document.createElement('button');back.type='button';back.className='epc-wizard-back';back.setAttribute('aria-label','Vorige stap');const img=document.createElement('img');img.src='ico/vorige-pijl.svg';img.alt='';back.append(img);back.onclick=()=>{coolingWizardStep--;coolingWizardRender()};top.append(back)}
- const title=document.createElement('h2');title.textContent=({cooling:'Type actieve koeling',generator:'Type opwekker',refrigerant:'Type koelmiddel',rooms:'Direct gekoelde ruimtes','details-knr':'Toestelgegevens',details:'Toestelgegevens',name:'Naamgeving'})[key];
- const progress=document.createElement('div');progress.className='epc-wizard-progress';progress.textContent=(coolingWizardStep+1)+' / '+steps.length;top.append(title,progress);step.append(top);
- const advance=()=>{coolingWizardStep=Math.min(steps.length-1,coolingWizardStep+1);coolingWizardRender()};
- if(key==='cooling'||key==='generator'){
-  const select=coolingWizardField(key),grid=document.createElement('div');grid.className='epc-wizard-grid';
-  for(const option of [...select.options].filter(o=>o.value)){
-   const b=document.createElement('button');b.type='button';b.className='epc-wizard-choice';b.textContent=option.textContent;b.classList.toggle('selected',select.value===option.value);
-   b.onclick=()=>{coolingWizardSet(key,option.value);advance()};grid.append(b);
-  }step.append(grid);
- }else if(key==='refrigerant'){
-  const grid=document.createElement('div');grid.className='epc-wizard-grid';
-  for(const value of ['Onbekend','Gekend']){
-   const b=document.createElement('button');b.type='button';b.className='epc-wizard-choice';b.textContent=value;b.classList.toggle('selected',coolingWizardGet('refrigerant')===value);
-   b.onclick=()=>{coolingWizardSet('refrigerant',value);if(value==='Onbekend'){coolingWizardSet('refrigerant_type','');advance()}else coolingWizardRender()};grid.append(b);
-  }step.append(grid);
-  if(coolingWizardGet('refrigerant')==='Gekend'){
-   const group=document.createElement('div');group.className='epc-wizard-final';const label=document.createElement('label');label.textContent='Type koelmiddel';const input=document.createElement('input');input.className='epc-wizard-final-input';input.value=coolingWizardGet('refrigerant_type');input.placeholder='Bijvoorbeeld R32';label.append(input);group.append(label);
-   const next=document.createElement('button');next.type='button';next.className='epc-wizard-next';next.textContent='Volgende';next.onclick=()=>{if(!input.value.trim()){input.focus();return}coolingWizardSet('refrigerant_type',input.value.trim());advance()};group.append(next);step.append(group);
-  }
- }else if(key==='rooms'){
-  const caption=document.createElement('p');caption.textContent='Selecteer alle rechtstreeks gekoelde ruimtes. Meerdere keuzes zijn mogelijk.';step.append(caption);
-  const grid=document.createElement('div');grid.className='epc-wizard-grid';
-  function addRoom(value){const b=document.createElement('button');b.type='button';b.className='epc-wizard-choice';b.textContent=value;b.classList.toggle('selected',coolingWizardRooms.includes(value));b.setAttribute('aria-pressed',String(coolingWizardRooms.includes(value)));b.onclick=()=>{coolingWizardRooms=coolingWizardRooms.includes(value)?coolingWizardRooms.filter(x=>x!==value):[...coolingWizardRooms,value];coolingWizardSet('cooled_rooms',JSON.stringify(coolingWizardRooms));b.classList.toggle('selected',coolingWizardRooms.includes(value));b.setAttribute('aria-pressed',String(coolingWizardRooms.includes(value)))};grid.append(b)}
-  [...new Set([...coolingDefaultRooms,...coolingWizardRooms])].forEach(addRoom);step.append(grid);
-  const group=document.createElement('div');group.className='epc-wizard-final';const label=document.createElement('label');label.textContent='Andere ruimte toevoegen';const row=document.createElement('div');const input=document.createElement('input');input.className='epc-wizard-final-input';input.placeholder='Naam van de ruimte';const add=document.createElement('button');add.type='button';add.className='epc-wizard-next';add.textContent='Toevoegen';add.onclick=()=>{const value=input.value.trim().toLocaleUpperCase('nl-BE');if(!value)return;if(![...coolingDefaultRooms,...coolingWizardRooms].some(x=>x.toLocaleUpperCase('nl-BE')===value)){coolingWizardRooms.push(value);coolingWizardSet('cooled_rooms',JSON.stringify(coolingWizardRooms));addRoom(value)}input.value='';input.focus()};row.append(input,add);label.append(row);group.append(label);
-  const next=document.createElement('button');next.type='button';next.className='epc-wizard-next';next.textContent='Volgende';next.onclick=()=>{coolingWizardSet('cooled_rooms',JSON.stringify(coolingWizardRooms));advance()};group.append(next);step.append(group);
- }else{
-  const group=document.createElement('div');group.className='epc-wizard-final';const isName=key==='name';const fields=isName?[['name','Naam koeling','text']]:[['brand','Merk','text'],['model','Type / model','text'],...(key==='details-knr'?[['year','Referentiejaar fabricage','number']]:[]),['remarks','Opmerking','textarea']];const controls={};
-  for(const [field,title,type] of fields){const label=document.createElement('label');label.textContent=title;const input=document.createElement(type==='textarea'?'textarea':'input');if(type!=='textarea')input.type=type;input.className='epc-wizard-final-input';input.value=isName?(coolingWizardGet('name')||coolingWizardSuggestedName()):coolingWizardGet(field);if(field==='name'){input.maxLength=120;input.required=true}if(field==='year'){input.min='0';input.max='9999';input.inputMode='numeric'}label.append(input);group.append(label);controls[field]=input}
-  const actions=document.createElement('div');actions.className='epc-wizard-final-actions';const cancel=document.createElement('button');cancel.type='button';cancel.className='epc-wizard-cancel';cancel.textContent='Annuleren';cancel.onclick=()=>$('installation-edit-back').click();actions.append(cancel);
-  const next=document.createElement('button');next.type='button';next.className='epc-wizard-next';next.textContent=isName?'Opslaan':'Volgende';next.onclick=async()=>{
-   for(const [field] of fields){const value=controls[field].value.trim();if(field==='year'&&value&&!/^\d{1,4}$/.test(value)){controls[field].focus();return}coolingWizardSet(field,value)}
-   if(!isName){advance();return}const name=coolingWizardGet('name');if(!name){controls.name.focus();return}next.disabled=true;
-   try{const {data,error}=await db.from('epc_installation_entries').select('id').eq('dossier_id',activeDossier.id).eq('section_id',activeInstallationSection.id).eq('name',name).is('deleted_at',null).limit(1);if(error)throw error;
-    if(data?.length){let warning=group.querySelector('.epc-wizard-name-error');if(!warning){warning=document.createElement('p');warning.className='epc-wizard-name-error';warning.setAttribute('role','alert');controls.name.parentElement.after(warning)}warning.textContent='Er bestaat al een koeling met deze naam. Kies een andere naam.';controls.name.focus();controls.name.select();return}
-    $('installation-form').requestSubmit();
-   }catch(error){err(error)}finally{next.disabled=false}
-  };actions.append(next);group.append(actions);step.append(group);
- }host.append(step);
+async function saveInstallationOverview(){
+ const o=installationOverview;if(!o)return;
+ const name=String(o.values.name||'').trim();if(!name){note('Vul een naam in.');return}
+ const {data:duplicates,error:checkError}=await db.from('epc_installation_entries').select('id,name').eq('dossier_id',activeDossier.id).eq('section_id',activeInstallationSection.id).is('deleted_at',null);
+ if(checkError)return err(checkError);
+ if((duplicates||[]).some(x=>x.id!==o.entry.id&&x.name.toLocaleLowerCase('nl-BE')===name.toLocaleLowerCase('nl-BE'))){note('Deze naam bestaat al. Kies een andere naam.');return}
+ const {name:ignored,remarks,...details}=o.values;
+ const {error}=await db.from('epc_installation_entries').update({name,remarks:remarks||null,details}).eq('id',o.entry.id).eq('dossier_id',activeDossier.id).eq('section_id',activeInstallationSection.id);
+ if(error)return err(error);
+ installationOverview=null;show('installation-wizard',false);show('installation-form',true);screen('installation-page');await loadInstallationEntries();note('Installatie opgeslagen.');
 }
 async function removeInstallation(entry){if(!confirm('Installatie "'+entry.name+'" verwijderen?'))return false;const {error}=await db.from('epc_installation_entries').update({deleted_at:new Date().toISOString()}).eq('id',entry.id).eq('section_id',activeInstallationSection.id).eq('dossier_id',activeDossier.id);if(error){err(error);return false}await loadInstallationEntries();note('Installatie verwijderd.');return true}
 $('installation-back').onclick=()=>{screen('detail');loadFacades()};
@@ -819,36 +768,38 @@ $('installation-section-delete').onclick=async()=>{
  activeInstallationSection=null;screen('detail');await loadFacades();note('Onderdeel verwijderd.');
 };
 $('installation-add').onclick=()=>editInstallation(null);
-$('installation-edit-back').onclick=$('installation-cancel').onclick=()=>{heatingWizardClose();screen('installation-page');loadInstallationEntries()};
+$('installation-edit-back').onclick=$('installation-cancel').onclick=()=>{ventilationWizard=null;installationOverview=null;heatingWizard=null;coolingWizard=null;swwWizard=null;simpleInstallationWizard=null;show('installation-wizard',false);show('installation-form',true);screen('installation-page');loadInstallationEntries()};
 $('installation-delete').onclick=async()=>{if(activeInstallation&&await removeInstallation(activeInstallation))screen('installation-page')};
 $('installation-form').onsubmit=async event=>{
  event.preventDefault();const form=$('installation-form'),fd=new FormData(form),details={};for(const def of installationDefinitions[activeInstallationSection.kind]||[])details[def.key]=fd.get(def.key)||null;
  const payload={dossier_id:activeDossier.id,section_id:activeInstallationSection.id,name:String(fd.get('name')||'').trim(),remarks:String(fd.get('remarks')||'').trim()||null,details};
  const button=$('installation-save');button.disabled=true;try{
   const query=db.from('epc_installation_entries');const {error}=activeInstallation?await query.update(payload).eq('id',activeInstallation.id).eq('section_id',activeInstallationSection.id):await query.insert(payload);
-  if(error)throw error;heatingWizardClose();screen('installation-page');await loadInstallationEntries();await loadSectionPhotos('installation',activeInstallationSection.id,'installation-page');note('Installatie opgeslagen.');
+  if(error)throw error;screen('installation-page');await loadInstallationEntries();await loadSectionPhotos('installation',activeInstallationSection.id,'installation-page');note('Installatie opgeslagen.');
  }catch(ex){err(ex)}finally{button.disabled=false}
 };
 
-const addItems=[['Voorgevel','facade'],['Achtergevel','facade'],['Linkergevel','facade'],['Rechtergevel','facade'],['Hellend dak voor','other'],['Hellend dak achter','other'],['Hellend dak links','other'],['Hellend dak rechts','other'],['Plat dak','other'],['Plafond','other'],['Vloer','other'],['Opwekker verwarming','other'],['Actieve koeling','other'],['Opwekker sanitair warm water','other'],['Continue ventilatie-eenheid','other'],['Ventilatie - Ruimte','other'],['Zonneboiler','other'],['PV-panelen','other'],['Verlichting','other']];
+const addItems=[['Voorgevel','facade'],['Achtergevel','facade'],['Linkergevel','facade'],['Rechtergevel','facade'],['Hellend dak voor','other'],['Hellend dak achter','other'],['Hellend dak links','other'],['Hellend dak rechts','other'],['Plat dak','other'],['Plafond','other'],['Vloer','other'],['Opwekker verwarming','other'],['Verwarmingsinstallatie','other'],['Actieve koeling','other'],['Opwekker SWW','other'],['Ventilatieruimte','other'],['Ventilatie-unit','other'],['Zonneboiler','other'],['PV-panelen','other'],['Verlichting','other']];
 function closeDrawer(){closeConstructionDrawer();show('add-drawer',false);show('add-overlay',false);document.body.classList.remove('drawer-open')}
 $('detail-add').onclick=async()=>{if(!activeDossier)return;const {data,error}=await db.from('epc_facades').select('name').eq('dossier_id',activeDossier.id).is('deleted_at',null);if(error)return err(error);const existing=new Set((data||[]).map(x=>x.name.toLocaleLowerCase()));
  const {data:existingEnvelope,error:envelopeError}=await db.from('epc_envelope_elements')
  .select('name').eq('dossier_id',activeDossier.id).is('deleted_at',null);
  if(envelopeError)return err(envelopeError);
  const envelopeNames=new Set((existingEnvelope||[]).map(x=>x.name.toLocaleLowerCase('nl-BE')));
- const {data:installedSections,error:installedError}=await db.from('epc_installation_sections').select('name').eq('dossier_id',activeDossier.id).is('deleted_at',null);
+ const {data:installedSections,error:installedError}=await db.from('epc_installation_sections').select('name,kind').eq('dossier_id',activeDossier.id).is('deleted_at',null);
  if(installedError)return err(installedError);
  const installedNames=new Set((installedSections||[]).map(x=>x.name.toLocaleLowerCase('nl-BE')));
+ if((installedSections||[]).some(x=>x.kind==='hot_water'))installedNames.add('opwekker sww');if((installedSections||[]).some(x=>x.kind==='room_ventilation'))installedNames.add('ventilatieruimte');if((installedSections||[]).some(x=>x.kind==='ventilation_unit'))installedNames.add('ventilatie-unit');
  const host=$('add-options');host.replaceChildren();for(const [name,type] of addItems){const b=document.createElement('button');b.type='button';b.className='add-option';b.append(iconFor(name),document.createTextNode(name));if((type==='facade'&&existing.has(name.toLocaleLowerCase()))||(envelopeKinds.has(name)&&envelopeNames.has(name.toLocaleLowerCase('nl-BE')))||(installationKinds.has(name)&&installedNames.has(name.toLocaleLowerCase('nl-BE')))){b.disabled=true;b.title='Deze gevel bestaat al';b.classList.add('already-added')}b.onclick=async()=>{if(envelopeKinds.has(name)){
   b.disabled=true;const {data:created,error:e}=await db.from('epc_envelope_elements').insert({dossier_id:activeDossier.id,element_kind:envelopeKinds.get(name),name}).select('*').single();
-  if(e){b.disabled=false;return err(e)}closeDrawer();await loadFacades();note(name+' toegevoegd.');return;
+  if(e){b.disabled=false;return err(e)}closeDrawer();await loadFacades();await openEnvelope(name,created);note(name+' toegevoegd.');return;
  }
  if(installationKinds.has(name)){
-  b.disabled=true;const {error:e}=await db.from('epc_installation_sections').insert({dossier_id:activeDossier.id,name,kind:installationKinds.get(name)});
-  if(e){b.disabled=false;return err(e)}closeDrawer();await loadFacades();note(name+' toegevoegd.');return;
+  if(!(await checkInstallationPrerequisite(installationKinds.get(name))))return;
+  b.disabled=true;const {data:created,error:e}=await db.from('epc_installation_sections').insert({dossier_id:activeDossier.id,name,kind:installationKinds.get(name)}).select('*').single();
+  if(e){b.disabled=false;return err(e)}closeDrawer();await loadFacades();await openInstallationSection(created);note(name+' toegevoegd.');return;
  }
- if(type!=='facade'){note('Dit onderdeel wordt in de volgende ontwikkelfase toegevoegd.');return}b.disabled=true;const r=await db.from('epc_facades').insert({dossier_id:activeDossier.id,name}).select('id').single();if(r.error){err(r.error);b.disabled=false;return}closeDrawer();await loadFacades();note(name+' toegevoegd.')};host.append(b)}show('add-overlay');show('add-drawer');document.body.classList.add('drawer-open')};
+ if(type!=='facade'){note('Dit onderdeel wordt in de volgende ontwikkelfase toegevoegd.');return}b.disabled=true;const r=await db.from('epc_facades').insert({dossier_id:activeDossier.id,name}).select('*').single();if(r.error){err(r.error);b.disabled=false;return}closeDrawer();await loadFacades();await openFacade(r.data);note(name+' toegevoegd.')};host.append(b)}show('add-overlay');show('add-drawer');document.body.classList.add('drawer-open')};
 $('close-drawer').onclick=$('add-overlay').onclick=closeDrawer;
 // Detecteer scrollen ook binnen een formulier/scrollcontainer, niet enkel window.
 function scrollPosition(){
@@ -1017,7 +968,7 @@ window.addEventListener('scroll',refreshScrollTop,{passive:true});
 function toggle(){show('vat-row',$('client-kind').value==='onderneming');show('client-address',!$('same').checked)}$('client-kind').onchange=toggle;$('same').onchange=toggle;
 function address(prefix){return Object.fromEntries(['street','number','postal','city'].map(k=>[k,field(prefix+'_'+k).value.trim()]))}
 function validVat(s){if(!s)return false;const v=s.toUpperCase().replace(/[.\s-]/g,'');if(!/^BE\d{10}$/.test(v))return false;const digits=v.slice(2),base=Number(digits.slice(0,8)),check=Number(digits.slice(8));return 97-(base%97)===check}
-f.onsubmit=async e=>{e.preventDefault();if(!workspace)return note('Geen werkruimte beschikbaar.');const kind=field('client_kind').value,vat=field('client_vat_number').value.trim();if(kind==='onderneming'&&vat&&!validVat(vat))return note('Ongeldig Belgisch btw-nummer (controlecijfers).');const property=address('property'),same=$('same').checked;const payload={remarks:field('remarks').value.trim()||null,dossier_type:field('dossier_type').value,client_phone:field('client_phone').value.trim()||null,client_email:field('client_email').value.trim()||null,dossier_number:field('dossier_number').value.trim()||null,inspection_date:field('inspection_date').value||null,client_kind:kind,client_name:field('client_name').value.trim(),client_vat_number:kind==='onderneming'?(vat||null):null,client_address_same_as_property:same,client_address:same?property:address('client'),property_address:property,title:`${property.street} ${property.number}, ${property.city}`.trim()};$('save').disabled=true;try{let r;if(current){r=await db.from('epc_dossiers').update(payload).eq('id',current).eq('workspace_id',workspace).select('id').single()}else{r=await db.from('epc_dossiers').insert({...payload,workspace_id:workspace,created_by:user.id}).select('id').single()}if(r.error)throw r.error;current=r.data.id;screen('home');await load();note('Dossier opgeslagen in Supabase.')}catch(ex){err(ex)}finally{$('save').disabled=false}};
+f.onsubmit=async e=>{e.preventDefault();if(!workspace)return note('Geen werkruimte beschikbaar.');const kind=field('client_kind').value,vat=field('client_vat_number').value.trim();if(kind==='onderneming'&&vat&&!validVat(vat))return note('Ongeldig Belgisch btw-nummer (controlecijfers).');const property=address('property'),same=$('same').checked;const payload={dossier_type:field('dossier_type').value,client_phone:field('client_phone').value.trim()||null,client_email:field('client_email').value.trim()||null,dossier_number:field('dossier_number').value.trim()||null,inspection_date:field('inspection_date').value||null,client_kind:kind,client_name:field('client_name').value.trim(),client_vat_number:kind==='onderneming'?(vat||null):null,client_address_same_as_property:same,client_address:same?property:address('client'),property_address:property,title:`${property.street} ${property.number}, ${property.city}`.trim()};$('save').disabled=true;try{let r;if(current){r=await db.from('epc_dossiers').update(payload).eq('id',current).eq('workspace_id',workspace).select('id').single()}else{r=await db.from('epc_dossiers').insert({...payload,workspace_id:workspace,created_by:user.id}).select('id').single()}if(r.error)throw r.error;current=r.data.id;screen('home');await load();note('Dossier opgeslagen in Supabase.')}catch(ex){err(ex)}finally{$('save').disabled=false}};
 
 // --- EPC Buddy guided construction input -------------------------------------
 // All choices use the EXISTING form controls and validation. Only the new
@@ -1065,6 +1016,16 @@ function wizardStart(form,kind){
  // For new records, replace the old long form with a single-step tile interface.
  form.classList.add('epc-form-wizard-hidden');host.classList.remove('hidden');
  wizardRender();
+}
+function wizardSubmitWithoutFlash(form){
+ // Keep the wizard visible while the async save is in progress.
+ // Stopping it first briefly exposes the legacy long form.
+ if(wizard?.form===form){
+  wizard.host.replaceChildren();
+  const waiting=document.createElement('div');waiting.className='epc-wizard-saving';waiting.textContent='Opslaan…';
+  wizard.host.append(waiting);
+ }
+ form.requestSubmit();
 }
 function wizardStop(form){
  if(wizard?.form===form)wizard=null;
@@ -1172,8 +1133,7 @@ function wizardRender(){
    if(key==='name'&&!input.value.trim()){input.focus();return}
    wizardSet(key,input.value.trim());
    if(key==='name'){
-    const activeForm=form;wizardStop(activeForm);
-    activeForm.requestSubmit();
+    const activeForm=form;wizardSubmitWithoutFlash(activeForm);
    }else wizardAdvance();
   };
   step.append(next);
@@ -1248,7 +1208,7 @@ function wizardFinalDetails(step,form){
    const remarks=wizardInput(form,'remarks');
    if(remarks)remarks.value=[remarks.value,...extras].filter(Boolean).join('\n');
   }
-  wizardStop(form);form.requestSubmit();
+  wizardSubmitWithoutFlash(form);
  };
  actions.append(cancel,save);group.append(actions);step.append(group);
 }
@@ -1276,5 +1236,324 @@ function wizardOther(key,value,step){
  if(grid)grid.after(box);else step.append(box);
 }
 
+
+
+// Ventilatieruimte en Ventilatie-unit volgens het aangeleverde schema.
+const VENT_WET_ROOMS=['Keuken','Wasplaats','Badkamer','Wc','Douchekamer'];
+const VENT_ROOMS=[...VENT_WET_ROOMS,'Woonkamer','Slaapkamer','Bureau','Hobbyruimte','Andere'];
+const VENT_WET=['Geen afvoer','Natuurlijk, verticaal','Natuurlijk, horizontaal','Mechanisch, permanent','Mechanisch, niet permanent'];
+const VENT_DRY=['Geen toevoer','Natuurlijk','Mechanisch, permanent','Mechanisch, niet permanent'];
+const VENT_CONTROLS=['Niet aanwezig','Onbekend','Manueel','Klokregeling','Vraagsturing, centraal','Vraagsturing, plaatselijk'];
+let ventilationWizard=null;
+async function fetchVentRooms(){
+ const {data:sections,error}=await db.from('epc_installation_sections').select('id').eq('dossier_id',activeDossier.id).eq('kind','room_ventilation').is('deleted_at',null);
+ if(error){err(error);return []}if(!sections?.length)return [];
+ const {data,error:e}=await db.from('epc_installation_entries').select('id,name,details').eq('dossier_id',activeDossier.id).in('section_id',sections.map(x=>x.id)).is('deleted_at',null);
+ if(e){err(e);return []}return (data||[]).filter(room=>room.details?.type==='Mechanisch, permanent');
+}
+function ventilationSteps(w){const v=w.values;
+ if(w.kind==='room_ventilation'){
+  const steps=[{key:'room',title:'Ruimte',choices:VENT_ROOMS}];
+  if(!v.room)return steps;
+  if(v.room==='Andere')steps.push({key:'custom_room',title:'Naam andere ruimte',input:true});
+  if(v.room==='Andere')steps.push({key:'room_type',title:'Ruimtetype',choices:['Natte ruimte','Droge ruimte']});
+  const wet=v.room_type==='Natte ruimte'||VENT_WET_ROOMS.includes(v.room);
+  if(v.room!=='Andere'||v.room_type)steps.push({key:'type',title:wet?'Afvoer':'Toevoer',choices:wet?VENT_WET:VENT_DRY});
+  steps.push({key:'name',title:'Naamgeving',input:true});return steps;
+ }
+ return [{key:'device',title:'Toestelgegevens',device:true},{key:'scope',title:'Individueel of collectief',choices:['Individueel','Collectief']},
+ {key:'type',title:'Type ventilatie',choices:['Toevoer en afvoer','Enkel toevoer','Enkel afvoer']},
+ {key:'control',title:'Regeling',choices:VENT_CONTROLS},{key:'served_rooms',title:'Bediende ventilatieruimtes',rooms:true},
+ {key:'name',title:'Naamgeving',input:true}];
+}
+async function startVentilationWizard(){
+ const kind=activeInstallationSection.kind;
+ const {data,error}=await db.from('epc_installation_entries').select('name').eq('dossier_id',activeDossier.id).eq('section_id',activeInstallationSection.id).is('deleted_at',null);
+ if(error)return err(error);
+ const rooms=kind==='ventilation_unit'?await fetchVentRooms():[];
+ if(kind==='ventilation_unit'&&!rooms.length){note('Voeg eerst minstens één ventilatieruimte met Mechanisch, permanent toe.');return}
+ ventilationWizard={kind,step:0,values:{},names:(data||[]).map(x=>x.name),rooms};activeInstallation=null;
+ $('installation-edit-title').textContent='Nieuwe '+activeInstallationSection.name.toLocaleLowerCase('nl-BE');$('installation-edit-icon').replaceChildren(iconFor(activeInstallationSection.name));
+ show('installation-form',false);show('installation-wizard',true);screen('installation-editor');renderVentilationWizard();
+}
+function renderVentilationWizard(){
+ const w=ventilationWizard;if(!w)return;const steps=ventilationSteps(w);w.step=Math.min(w.step,steps.length-1);const step=steps[w.step];
+ const host=$('installation-wizard');host.replaceChildren();const root=document.createElement('div');root.className='epc-wizard-step epc-heating-wizard';
+ const top=document.createElement('div');top.className='epc-wizard-top';if(w.step){const back=document.createElement('button');back.type='button';back.className='epc-wizard-back';const img=document.createElement('img');img.src='ico/vorige-pijl.svg';img.alt='Vorige';back.append(img);back.onclick=()=>{w.step--;renderVentilationWizard()};top.append(back)}
+ const title=document.createElement('strong');title.textContent=step.title;top.append(title);const progress=document.createElement('span');progress.className='epc-wizard-progress';progress.textContent=(w.step+1)+' / '+steps.length;top.append(progress);root.append(top);
+ const next=()=>{w.step++;renderVentilationWizard()};
+ const button=(text,fn)=>{const b=document.createElement('button');b.type='button';b.className='epc-wizard-next';b.textContent=text;b.onclick=fn;root.append(b)};
+ if(step.choices){const grid=document.createElement('div');grid.className='epc-wizard-grid';for(const choice of step.choices){const b=document.createElement('button');b.type='button';b.className='epc-wizard-choice'+(w.values[step.key]===choice?' selected':'');b.textContent=choice;b.onclick=()=>{if(step.key==='room'){w.values.room_type=VENT_WET_ROOMS.includes(choice)?'Natte ruimte':choice==='Andere'?'':'Droge ruimte';delete w.values.type;delete w.values.custom_room}if(step.key==='room_type')delete w.values.type;w.values[step.key]=choice;next()};grid.append(b)}root.append(grid)}
+ else if(step.rooms){const grid=document.createElement('div');grid.className='epc-wizard-grid';const selected=new Set(w.values.served_rooms||[]);for(const room of w.rooms){const b=document.createElement('button');b.type='button';b.className='epc-wizard-choice'+(selected.has(room.id)?' selected':'');b.textContent=room.name;b.onclick=()=>{selected.has(room.id)?selected.delete(room.id):selected.add(room.id);w.values.served_rooms=[...selected];b.classList.toggle('selected',selected.has(room.id))};grid.append(b)}root.append(grid);if(!w.rooms.length){const p=document.createElement('p');p.textContent='Geen ventilatieruimtes met Mechanisch, permanent beschikbaar.';root.append(p)}else{button('Alle ruimtes toevoegen',()=>{w.values.served_rooms=w.rooms.map(room=>room.id);next()})}button('Volgende',next)}
+ else if(step.device){const fields=document.createElement('div');fields.className='epc-heating-fields';for(const [key,label] of [['brand','Merk'],['model','Type / model'],['remarks','Opmerking']]){const wrap=document.createElement('label');wrap.className='epc-heating-field';wrap.textContent=label;const input=document.createElement(key==='remarks'?'textarea':'input');input.className='epc-wizard-input';input.value=w.values[key]||'';input.oninput=()=>{w.values[key]=input.value};wrap.append(input);fields.append(wrap)}root.append(fields);button('Volgende',next)}
+ else{const input=document.createElement(step.key==='remarks'?'textarea':'input');input.className='epc-wizard-input';input.value=w.values[step.key]??(step.key==='name'?(w.kind==='room_ventilation'?'VR-':'VU-')+(w.kind==='room_ventilation'?(w.values.custom_room||w.values.room||''): [w.values.brand,w.values.model].filter(Boolean).join('-')):'');input.placeholder=step.title;input.oninput=()=>{w.values[step.key]=input.value};root.append(input);button(step.key==='name'?'Opslaan':'Volgende',()=>{const value=input.value.trim();if(step.key!=='remarks'&&!value){note('Vul '+step.title.toLocaleLowerCase('nl-BE')+' in.');input.focus();return}w.values[step.key]=value;step.key==='name'?saveVentilationWizard():next()})}
+ host.append(root);
+}
+async function saveVentilationWizard(){
+ const w=ventilationWizard;if(!w)return;const name=String(w.values.name||'').trim();if(!name){note('Vul een naam in.');return}
+ if(w.names.some(x=>x.toLocaleLowerCase('nl-BE')===name.toLocaleLowerCase('nl-BE'))){note('Deze naam bestaat al. Kies een andere naam.');return}
+ const {name:ignored,remarks,...details}=w.values;
+ const {error}=await db.from('epc_installation_entries').insert({dossier_id:activeDossier.id,section_id:activeInstallationSection.id,name,remarks:w.kind==='room_ventilation'?null:(remarks||null),details});if(error)return err(error);
+ ventilationWizard=null;show('installation-wizard',false);show('installation-form',true);screen('installation-page');await loadInstallationEntries();await loadSectionPhotos('installation',activeInstallationSection.id,'installation-page');note('Ventilatie opgeslagen.');
+}
+// Koeling: dossierafhankelijke aanmaakwizard (kNR / RES / GD).
+const COOL_TYPES=['Geen','Onbekend','Onvolledig','Aanwezig'];
+const COOL_GENERATORS=['Lucht/lucht','Water/lucht','Bodem/lucht','Lucht/water','Water/water','Bodem/water'];
+const COOL_ROOMS=['LEEFRUIMTE','KEUKEN','BADKAMER','WASPLAATS',...Array.from({length:10},(_,i)=>'SLP'+(i+1))];
+let coolingWizard=null;
+function coolingSteps(){
+ const t=coolingWizard.type,v=coolingWizard.values;
+ if(t==='kNR')return [{key:'cooling',title:'Type actieve koeling',choices:COOL_TYPES},{key:'generator',title:'Type opwekker',choices:COOL_GENERATORS},{key:'refrigerant',title:'Type koelmiddel',choices:['Onbekend','Gekend']},...(v.refrigerant==='Gekend'?[{key:'refrigerant_type',title:'Koelmiddel',input:true}]:[]),{key:'device',title:'Toestelgegevens'},{key:'name',title:'Naamgeving'}];
+ if(t==='RES')return [{key:'rooms',title:'Direct gekoelde ruimtes'},{key:'device',title:'Toestelgegevens'},{key:'name',title:'Naamgeving'}];
+ return [{key:'device',title:'Toestelgegevens'},{key:'name',title:'Naamgeving'}];
+}
+function buildCoolingRoomPicker(initial,onDone){
+ const root=document.createElement('div');root.className='epc-cooling-rooms';const selected=new Set(initial);
+ const choices=document.createElement('div');choices.className='epc-wizard-grid';
+ const custom=document.createElement('div');custom.className='epc-cooling-custom';
+ const draw=()=>{choices.replaceChildren();const all=[...COOL_ROOMS,...[...selected].filter(x=>!COOL_ROOMS.includes(x))];for(const room of all){const b=document.createElement('button');b.type='button';b.className='epc-wizard-choice'+(selected.has(room)?' selected':'');b.textContent=room;b.onclick=()=>{selected.has(room)?selected.delete(room):selected.add(room);draw()};choices.append(b)}};
+ draw();root.append(choices);
+ const row=document.createElement('div');row.className='epc-cooling-add-room';const input=document.createElement('input');input.className='epc-wizard-input';input.placeholder='Andere ruimte toevoegen';input.setAttribute('aria-label','Andere ruimte');const add=document.createElement('button');add.type='button';add.className='epc-wizard-next';add.textContent='Toevoegen';add.onclick=()=>{const val=input.value.trim().toLocaleUpperCase('nl-BE');if(val){selected.add(val);input.value='';draw()}};row.append(input,add);root.append(row);
+ const done=document.createElement('button');done.type='button';done.className='epc-wizard-next';done.textContent='Bevestigen';done.onclick=()=>onDone([...selected]);root.append(done);return root;
+}
+async function startCoolingWizard(){
+ const {data,error}=await db.from('epc_installation_entries').select('name').eq('section_id',activeInstallationSection.id).eq('dossier_id',activeDossier.id).is('deleted_at',null);if(error)return err(error);
+ coolingWizard={type:dossierType(activeDossier),values:{},step:0,names:(data||[]).map(x=>x.name)};activeInstallation=null;
+ $('installation-edit-title').textContent='Nieuwe '+activeInstallationSection.name.toLocaleLowerCase('nl-BE');$('installation-edit-icon').replaceChildren(iconFor(activeInstallationSection.name));show('installation-form',false);show('installation-wizard',true);screen('installation-editor');renderCoolingWizard();
+}
+function renderCoolingWizard(){
+ const w=coolingWizard;if(!w)return;const steps=coolingSteps();w.step=Math.min(w.step,steps.length-1);const step=steps[w.step],host=$('installation-wizard');host.replaceChildren();const root=document.createElement('div');root.className='epc-wizard-step epc-heating-wizard';
+ const top=document.createElement('div');top.className='epc-wizard-top';if(w.step){const back=document.createElement('button');back.type='button';back.className='epc-wizard-back';const img=document.createElement('img');img.src='ico/vorige-pijl.svg';img.alt='Vorige';back.append(img);back.onclick=()=>{w.step--;renderCoolingWizard()};top.append(back)}const title=document.createElement('strong');title.textContent=step.title;top.append(title);const progress=document.createElement('span');progress.className='epc-wizard-progress';progress.textContent=(w.step+1)+' / '+steps.length;top.append(progress);root.append(top);
+ const next=()=>{w.step++;renderCoolingWizard()};
+ if(step.choices){const grid=document.createElement('div');grid.className='epc-wizard-grid';for(const choice of step.choices){const b=document.createElement('button');b.type='button';b.className='epc-wizard-choice'+(w.values[step.key]===choice?' selected':'');b.textContent=choice;b.onclick=()=>{w.values[step.key]=choice;if(step.key==='refrigerant'&&choice!=='Gekend')delete w.values.refrigerant_type;next()};grid.append(b)}root.append(grid)}
+ else if(step.key==='rooms')root.append(buildCoolingRoomPicker(w.values.rooms||[],rooms=>{w.values.rooms=rooms;next()}));
+ else if(step.key==='device'){const fields=document.createElement('div');fields.className='epc-heating-fields';const defs=[['brand','Merk','input'],['model','Type / model','input'],...(w.type==='kNR'?[['year','Referentiejaar fabricage','input']]:[]),['remarks','Opmerking','textarea']];for(const [key,label,tag] of defs){const wrap=document.createElement('label');wrap.className='epc-heating-field';wrap.textContent=label;const el=document.createElement(tag);el.className='epc-wizard-input';el.value=w.values[key]||'';if(key==='year'){el.type='number';el.min='1800';el.max='2100'}el.oninput=()=>{w.values[key]=el.value};wrap.append(el);fields.append(wrap)}root.append(fields);const b=document.createElement('button');b.type='button';b.className='epc-wizard-next';b.textContent='Volgende';b.onclick=next;root.append(b)}
+ else{const input=document.createElement('input');input.className='epc-wizard-input';input.value=w.values[step.key]??(step.key==='name'?['Koeling',w.values.brand,w.values.model].filter(Boolean).join('-'):'');input.placeholder=step.title;input.oninput=()=>{w.values[step.key]=input.value};root.append(input);const b=document.createElement('button');b.type='button';b.className='epc-wizard-next';b.textContent=step.key==='name'?'Opslaan':'Volgende';b.onclick=()=>{const value=input.value.trim();if(!value){note('Vul '+step.title.toLocaleLowerCase('nl-BE')+' in.');input.focus();return}w.values[step.key]=value;if(step.key==='name')saveCoolingWizard();else next()};root.append(b)}host.append(root);
+}
+async function saveCoolingWizard(){
+ const w=coolingWizard;if(!w)return;const name=String(w.values.name||'').trim();if(!name){note('Vul een naam in.');return}if(w.names.some(x=>x.toLocaleLowerCase('nl-BE')===name.toLocaleLowerCase('nl-BE'))){note('Deze naam bestaat al. Kies een andere naam.');return}
+ const {name:unused,remarks,...details}=w.values;const {error}=await db.from('epc_installation_entries').insert({dossier_id:activeDossier.id,section_id:activeInstallationSection.id,name,remarks:remarks||null,details});if(error)return err(error);coolingWizard=null;show('installation-wizard',false);show('installation-form',true);screen('installation-page');await loadInstallationEntries();await loadSectionPhotos('installation',activeInstallationSection.id,'installation-page');note('Koeling opgeslagen.');
+}
+// Herbruikbare wizards voor zonneboiler, PV-panelen en verlichting.
+let simpleInstallationWizard=null;
+async function fetchSolarRoofs(){
+ const {data,error}=await db.from('epc_envelope_elements').select('name').eq('dossier_id',activeDossier.id).is('deleted_at',null);
+ if(error){err(error);return ['Dak buiten beschermd volume']}
+ return [...new Set([...(data||[]).filter(x=>/^Hellend dak|^Plat dak/i.test(x.name)).map(x=>x.name),'Dak buiten beschermd volume'])];
+}
+async function startSimpleInstallationWizard(){
+ const kind=activeInstallationSection.kind;
+ const {data,error}=await db.from('epc_installation_entries').select('name').eq('dossier_id',activeDossier.id).eq('section_id',activeInstallationSection.id).is('deleted_at',null);
+ if(error)return err(error);
+ simpleInstallationWizard={kind,step:0,values:{},existing:(data||[]).map(x=>x.name),roofs:['solar_thermal','pv'].includes(kind)?await fetchSolarRoofs():[]};
+ activeInstallation=null;$('installation-edit-title').textContent='Nieuwe '+activeInstallationSection.name;
+ $('installation-edit-icon').replaceChildren(iconFor(activeInstallationSection.name));
+ show('installation-form',false);show('installation-wizard',true);screen('installation-editor');renderSimpleInstallationWizard();
+}
+function simpleWizardSteps(w){
+ const defs=installationDefinitions[w.kind]||[];
+ return [...defs.map(d=>({...d,title:d.label,choices:d.type==='roof-link'?w.roofs:d.options})),{key:'remarks',title:'Opmerking',type:'textarea'},{key:'name',title:'Naamgeving'}];
+}
+function renderSimpleInstallationWizard(){
+ const w=simpleInstallationWizard;if(!w)return;
+ const steps=simpleWizardSteps(w),step=steps[w.step],host=$('installation-wizard');host.replaceChildren();
+ const root=document.createElement('div');root.className='epc-wizard-step epc-heating-wizard';
+ const top=document.createElement('div');top.className='epc-wizard-top';
+ if(w.step>0){const back=document.createElement('button');back.type='button';back.className='epc-wizard-back';const img=document.createElement('img');img.src='ico/vorige-pijl.svg';img.alt='Vorige';back.append(img);back.onclick=()=>{w.step--;renderSimpleInstallationWizard()};top.append(back)}
+ const progress=document.createElement('span');progress.className='epc-wizard-progress';progress.textContent=(w.step+1)+' / '+steps.length;top.append(progress);root.append(top);
+ const title=document.createElement('h3');title.textContent=step.title;root.append(title);
+ const next=()=>{w.step++;renderSimpleInstallationWizard()};
+ if(step.choices?.length){const grid=document.createElement('div');grid.className='epc-wizard-grid';for(const value of step.choices){const b=document.createElement('button');b.type='button';b.className='epc-wizard-choice'+(w.values[step.key]===value?' selected':'');b.textContent=value;b.onclick=()=>{w.values[step.key]=value;next()};grid.append(b)}root.append(grid)}
+ else{const input=document.createElement(step.type==='textarea'?'textarea':'input');input.className='epc-wizard-input';if(step.type==='number'){input.type='number';input.min=step.key==='quantity'?'1':'0';input.step=step.key==='quantity'?'1':'any';input.inputMode='decimal'}
+ const prefix=w.kind==='solar_thermal'?'Zonneboiler':w.kind==='pv'?'PV':'Verlichting';
+ const defaultName=prefix+' '+(w.existing.reduce((n,x)=>{const m=x.match(new RegExp('^'+prefix+'\\s+(\\d+)$','i'));return m?Math.max(n,Number(m[1])):n},0)+1);
+ input.value=w.values[step.key]??(step.key==='name'?defaultName:'');input.placeholder=step.title;input.oninput=()=>{w.values[step.key]=input.value};root.append(input);
+ const b=document.createElement('button');b.type='button';b.className='epc-wizard-next';b.textContent=step.key==='name'?'Opslaan':'Volgende';b.onclick=()=>{const value=input.value.trim();if(step.key!=='remarks'&&!value){note('Vul '+step.title.toLocaleLowerCase('nl-BE')+' in.');input.focus();return}if(step.type==='number'&&(!Number.isFinite(Number(value))||Number(value)<=0||(step.key==='quantity'&&!Number.isInteger(Number(value))))){note('Vul een geldig positief getal in.');input.focus();return}w.values[step.key]=value;if(step.key==='name')saveSimpleInstallationWizard();else next()};root.append(b)}host.append(root);
+}
+async function saveSimpleInstallationWizard(){
+ const w=simpleInstallationWizard;if(!w)return;const name=String(w.values.name||'').trim();if(!name)return note('Vul een naam in.');
+ if(w.existing.some(x=>x.toLocaleLowerCase('nl-BE')===name.toLocaleLowerCase('nl-BE')))return note('Deze naam bestaat al. Kies een andere naam.');
+ const {name:ignored,remarks,...details}=w.values;
+ const {error}=await db.from('epc_installation_entries').insert({dossier_id:activeDossier.id,section_id:activeInstallationSection.id,name,remarks:remarks||null,details});if(error)return err(error);
+ simpleInstallationWizard=null;show('installation-wizard',false);show('installation-form',true);screen('installation-page');await loadInstallationEntries();await loadSectionPhotos('installation',activeInstallationSection.id,'installation-page');note('Installatie opgeslagen.');
+}
+// Opwekker SWW: conditionele wizard op basis van het aangeleverde schema.
+let swwWizard=null;
+function swwSteps(v,systems){
+ const steps=[{key:'type',title:'Soort SWW',choices:['Individueel','Collectief']}];
+ if(!v.type)return steps;
+ if(v.type==='Individueel'){
+  steps.push({key:'heating',title:'Koppeling verwarming',choices:['Los van CV',...systems]});
+  if(!v.heating)return steps;
+ }
+ if(v.type==='Collectief'||v.heating==='Los van CV'){
+  steps.push({key:'energy',title:'Energiedrager',choices:['Gas','Stookolie','Elektriciteit']});
+  if(!v.energy)return steps;
+  if(v.energy==='Gas')steps.push({key:'sww_generator',title:'Type opwekker',choices:['WP boiler','Ketel']});
+  if(v.energy==='Elektriciteit')steps.push({key:'sww_generator',title:'Type opwekker',choices:['WP boiler','Elektrische weerstandsverwarming']});
+  if(['Gas','Elektriciteit'].includes(v.energy)&&!v.sww_generator)return steps;
+ }
+ steps.push({key:'tank_present',title:'Voorraadvat',choices:['Nee','Ja']});
+ if(!v.tank_present)return steps;
+ if(v.tank_present==='Ja'){
+  steps.push({key:'tank_method',title:'Volumebepaling',choices:['Omtrek + hoogte','Volume invoer']});
+  if(!v.tank_method)return steps;
+  if(v.tank_method==='Omtrek + hoogte')steps.push({key:'tank_dimensions',title:'Afmetingen voorraadvat',fields:[['tank_circumference','Omtrek (cm)'],['tank_height','Hoogte (cm)']]});
+  else steps.push({key:'tank_volume',title:'Volume voorraadvat',fields:[['tank','Volume (liter)']]});
+  steps.push({key:'tank_insulation',title:'Isolatie voorraadvat',choices:['Nee','Ja','Onbekend']});
+  if(!v.tank_insulation)return steps;
+ }
+ steps.push({key:'pipes_type',title:'Leidingen',choices:['Circulatieleidingen','Gewone leidingen']});
+ if(!v.pipes_type)return steps;
+ if(v.pipes_type==='Circulatieleidingen')steps.push({key:'pipes_insulation',title:'Isolatie circulatieleidingen',choices:['Geïsoleerd','Niet geïsoleerd','Onbekend']});
+ else steps.push({key:'pipes_length',title:'Lengte gewone leidingen',choices:['> 5 m','≤ 5 m']});
+ if(!v[v.pipes_type==='Circulatieleidingen'?'pipes_insulation':'pipes_length'])return steps;
+ steps.push({key:'device',title:'Overige gegevens',fields:[['brand','Merk'],['model','Type / model'],['year','Referentiejaar fabricage'],['remarks','Opmerking']]});
+ steps.push({key:'name',title:'Naamgeving'});return steps;
+}
+async function startSwwWizard(){
+ const {data:existing,error}=await db.from('epc_installation_entries').select('name').eq('dossier_id',activeDossier.id).eq('section_id',activeInstallationSection.id).is('deleted_at',null);
+ if(error)return err(error);
+ const {data:sections,error:sectionError}=await db.from('epc_installation_sections').select('id').eq('dossier_id',activeDossier.id).eq('kind','heating_system').is('deleted_at',null);
+ if(sectionError)return err(sectionError);
+ const systems=[];
+ for(const section of sections||[]){const {data,error:e}=await db.from('epc_installation_entries').select('id,name').eq('dossier_id',activeDossier.id).eq('section_id',section.id).is('deleted_at',null);if(e)return err(e);systems.push(...(data||[]))}
+ swwWizard={step:0,values:{},names:(existing||[]).map(x=>x.name),systems};activeInstallation=null;
+ $('installation-edit-title').textContent='Nieuwe opwekker SWW';$('installation-edit-icon').replaceChildren(iconFor('Opwekker SWW'));
+ show('installation-form',false);show('installation-wizard',true);screen('installation-editor');renderSwwWizard();
+}
+function renderSwwWizard(){
+ const w=swwWizard;if(!w)return;const steps=swwSteps(w.values,w.systems.map(x=>x.name));w.step=Math.min(w.step,steps.length-1);
+ const step=steps[w.step],host=$('installation-wizard');host.replaceChildren();
+ const root=document.createElement('div');root.className='epc-wizard-step epc-heating-wizard';
+ const top=document.createElement('div');top.className='epc-wizard-top';
+ if(w.step){const back=document.createElement('button');back.type='button';back.className='epc-wizard-back';const img=document.createElement('img');img.src='ico/vorige-pijl.svg';img.alt='Vorige';back.append(img);back.onclick=()=>{w.step--;renderSwwWizard()};top.append(back)}
+ const title=document.createElement('strong');title.textContent=step.title;top.append(title);
+ const progress=document.createElement('span');progress.className='epc-wizard-progress';progress.textContent=(w.step+1)+' / '+steps.length;top.append(progress);root.append(top);
+ const next=()=>{w.step++;renderSwwWizard()};
+ if(step.choices){const grid=document.createElement('div');grid.className='epc-wizard-grid';for(const choice of step.choices){const b=document.createElement('button');b.type='button';b.className='epc-wizard-choice'+(w.values[step.key]===choice?' selected':'');b.textContent=choice;b.onclick=()=>{
+  if(w.values[step.key]!==choice){
+   if(step.key==='type'){for(const k of ['heating','energy','sww_generator'])delete w.values[k]}
+   if(step.key==='heating'){delete w.values.energy;delete w.values.sww_generator}
+   if(step.key==='energy')delete w.values.sww_generator;
+   if(step.key==='tank_present'&&choice==='Nee')for(const k of ['tank_method','tank_circumference','tank_height','tank','tank_insulation'])delete w.values[k];
+   if(step.key==='tank_method')for(const k of ['tank_circumference','tank_height','tank'])delete w.values[k];
+   if(step.key==='pipes_type'){delete w.values.pipes_insulation;delete w.values.pipes_length}
+  }
+  w.values[step.key]=choice;next()};grid.append(b)}root.append(grid)}
+ else if(step.fields){const fields=document.createElement('div');fields.className='epc-heating-fields';const inputs=[];
+  for(const [key,label] of step.fields){const wrap=document.createElement('label');wrap.className='epc-heating-field';wrap.textContent=label;const el=document.createElement(key==='remarks'?'textarea':'input');el.className='epc-wizard-input';el.value=w.values[key]??'';if(['tank','tank_circumference','tank_height','year'].includes(key)){el.type='number';el.min='0';el.step=key==='year'?'1':'any'}el.oninput=()=>{w.values[key]=el.value};wrap.append(el);fields.append(wrap);inputs.push([key,el])}
+  root.append(fields);const b=document.createElement('button');b.type='button';b.className='epc-wizard-next';b.textContent='Volgende';b.onclick=()=>{if(step.key==='tank_dimensions'&&(!Number(w.values.tank_circumference)||!Number(w.values.tank_height))){note('Vul omtrek en hoogte in.');return}if(step.key==='tank_volume'&&!Number(w.values.tank)){note('Vul het volume in.');return}next()};root.append(b);
+ }else if(step.key==='name'){
+  const input=document.createElement('input');input.className='epc-wizard-input';input.value=w.values.name??['SWW',w.values.brand,w.values.model].filter(Boolean).join('-');input.placeholder='Naam opwekker SWW';input.oninput=()=>{w.values.name=input.value};root.append(input);
+  const b=document.createElement('button');b.type='button';b.className='epc-wizard-next';b.textContent='Opslaan';b.onclick=()=>{w.values.name=input.value.trim();saveSwwWizard()};root.append(b)
+ }
+ host.append(root);
+}
+async function saveSwwWizard(){
+ const w=swwWizard;if(!w)return;const name=String(w.values.name||'').trim();if(!name){note('Vul een naam in.');return}
+ if(w.names.some(x=>x.toLocaleLowerCase('nl-BE')===name.toLocaleLowerCase('nl-BE'))){note('Deze naam bestaat al. Kies een andere naam.');return}
+ const {name:ignored,remarks,...details}=w.values;
+ if(details.type==='Individueel'&&details.heating&&details.heating!=='Los van CV'){
+  const linked=w.systems.find(x=>x.name===details.heating);if(linked)details.heating_system_id=linked.id;
+ }
+ const {error}=await db.from('epc_installation_entries').insert({dossier_id:activeDossier.id,section_id:activeInstallationSection.id,name,remarks:remarks||null,details});if(error)return err(error);
+ swwWizard=null;show('installation-wizard',false);show('installation-form',true);screen('installation-page');await loadInstallationEntries();await loadSectionPhotos('installation',activeInstallationSection.id,'installation-page');note('Opwekker SWW opgeslagen.');
+}
+// Verwarming: één gedeelde tegelwizard, met voorwaardelijke stappen volgens de aangeleverde schema's.
+let heatingWizard=null;
+const HW=(key,title,choices,short=null)=>({key,title,choices,short});
+const HP=['Lucht/lucht','Bodem/lucht','Water/lucht','Lucht/water','Bodem/water','Water/water'];
+const HW_SHORT={'Lucht/lucht':'L/L','Bodem/lucht':'B/L','Water/lucht':'W/L','Lucht/water':'L/W','Bodem/water':'B/W','Water/water':'W/W','Oppervlakteverwarming':'VVW','Combinatie radiatoren/convectoren en oppervlakteverwarming':'RAD + VVW','Radiatoren/convectoren':'RAD','Luchtverwarming':'LUCHT','Onvolledig (enkel opwekker)':'ENKEL OPWEKKER','Onvolledig (enkel afgifte)':'ENKEL AFGIFTE'};
+function heatingSteps(){
+ const d=heatingWizard.values,steps=[];const add=(k,t,c)=>steps.push(HW(k,t,c));
+ if(heatingWizard.kind==='heating'){
+  add('generator','OPWEKKER',['Individueel','Collectief']);
+  if(d.generator==='Collectief'){
+   add('device_details','Toestelgegevens',null);
+  }else{
+   add('energy','ENERGIEDRAGER',['Gas','Stookolie','Hout','Pellets','Kolen','Warmtenet','Elektriciteit']);
+   if(d.energy==='Gas')add('type','SOORT',['Condenserend','Niet-condenserend (open)','Niet-condenserend (gesloten)','WKK','Warmtepomp']);
+   if(d.energy==='Stookolie')add('type','SOORT',['Condenserend','Niet-condenserend','WKK']);
+   if(['Hout','Pellets'].includes(d.energy))add('type','SOORT',['Condenserend','Niet-condenserend']);
+   if(d.energy==='Kolen')add('type','SOORT',['Niet-condenserend']);
+   if(d.energy==='Warmtenet')add('type','SOORT',['Energie-efficiënt','Niet energie-efficiënt','Gedetailleerd']);
+   if(d.energy==='Elektriciteit')add('type','SOORT',['Warmtepomp','Elektrische weerstandsverwarming']);
+   if(d.type==='Warmtepomp')add('medium','BRON / AFGIFTEMEDIUM',HP);
+   const labels=d.energy==='Gas'?(d.type==='Condenserend'?['Geen','CE','Energy Star','HR-top','Blaue Engel']:d.type?.startsWith('Niet-condenserend')?['Geen','BGV/AGB','HR BGV/AGB','HR+','CE','Energy Star']:[]):d.energy==='Stookolie'?(d.type==='Condenserend'?['CE','Energy Star','Optimaz Elite 2005']:d.type==='Niet-condenserend'?['Optimaz Oud','CE','Energy Star','Optimaz 2005']:[]):d.energy==='Hout'?['CE','Nordic Swann']:d.energy==='Pellets'?['CE','Blaue Engel','Nordic Swann']:d.energy==='Kolen'?['Geen','CE']:[];
+   if(labels.length)add('label','LABEL',['Geen',...labels.filter(x=>x!=='Geen')]);
+   if(labels.length)add('outside','BUITEN BESCHERMD VOLUME',['Nee','Ja']);
+   add('device_details','Toestelgegevens',null);
+  }
+  if(heatingWizard.kind!=='heating')add('remarks','Opmerking',null);add('name','Naamgeving',null);
+ }else{
+  add('type','TYPE VERWARMING',['Geen','Onvolledig (enkel opwekker)','Onvolledig (enkel afgifte)','Centraal','Decentraal']);
+  if(d.type==='Onvolledig (enkel opwekker)'){add('known_generator','OPWEKKER GEKEND?',['Nee','Ja']);if(d.known_generator==='Ja')add('generator_link','OPWEKKER VERWARMING',heatingWizard.generators)}
+  if(d.type==='Onvolledig (enkel afgifte)'){
+   add('known_emission','AFGIFTESYSTEEM GEKEND?',['Nee','Ja']);
+   if(d.known_emission==='Ja')add('emission','TYPE AFGIFTESYSTEEM',['Oppervlakteverwarming','Combinatie radiatoren/convectoren en oppervlakteverwarming','Radiatoren/convectoren','Luchtverwarming','Onbekend']);
+   if(['Radiatoren/convectoren','Combinatie radiatoren/convectoren en oppervlakteverwarming'].includes(d.emission))add('room_control','REGELING BINNENTEMPERATUUR',['Geen','Manueel','Thermostaatkranen']);
+  }
+  if(d.type==='Centraal'){
+   add('generator_link','OPWEKKER VERWARMING',heatingWizard.generators);
+   add('external','EXTERNE STOOKPLAATS',['Ja','Nee']);
+   add('emission','TYPE AFGIFTESYSTEEM',['Oppervlakteverwarming','Combinatie radiatoren/convectoren en oppervlakteverwarming','Radiatoren/convectoren','Luchtverwarming','Onbekend']);
+   if(['Oppervlakteverwarming','Combinatie radiatoren/convectoren en oppervlakteverwarming','Radiatoren/convectoren'].includes(d.emission))add('pump','POMPREGELING',['Ja','Nee','Onbekend']);
+   if(['Radiatoren/convectoren','Combinatie radiatoren/convectoren en oppervlakteverwarming'].includes(d.emission))add('valves','RADIATORKRANEN',['Manueel','Thermostaatkranen']);
+   if(d.emission)add('sensor',d.emission==='Oppervlakteverwarming'?'BUITENVOELER / BUITENVLOER':'BUITENVOELER',['Aanwezig','Afwezig']);
+  }
+  if(d.type==='Decentraal'){
+   add('energy','ENERGIEDRAGER',['Gas','Stookolie','Kolen','Pellets','Hout','Elektriciteit']);
+   if(d.energy==='Hout'){add('stove','SOORT',['Kachel','Accumulerende kachel']);add('year','REFERENTIEJAAR FABRICAGE',null)}
+  }
+  add('remarks','OPMERKING',null);add('name','NAAMGEVING',null);
+ }
+ return steps;
+}
+async function startHeatingWizard(entry){
+ activeInstallation=entry;
+ const kind=activeInstallationSection.kind;
+ let generators=[];
+ if(kind==='heating_system'){
+  const {data:secs,error}=await db.from('epc_installation_sections').select('id').eq('dossier_id',activeDossier.id).eq('kind','heating').is('deleted_at',null);
+  if(error)return err(error);
+  for(const sec of secs||[]){const {data,error:e}=await db.from('epc_installation_entries').select('name').eq('section_id',sec.id).eq('dossier_id',activeDossier.id).is('deleted_at',null);if(e)return err(e);generators.push(...(data||[]).map(x=>x.name))}
+  if(!generators.length&&!entry){note('Voeg eerst een opwekker verwarming toe.');return}
+ }
+ const {data:existing,error}=await db.from('epc_installation_entries').select('name').eq('section_id',activeInstallationSection.id).eq('dossier_id',activeDossier.id).is('deleted_at',null);
+ if(error)return err(error);
+ const values={...(entry?.details||{})};
+ heatingWizard={kind,values,step:0,generators,existingNames:(existing||[]).map(x=>x.name),originalName:entry?.name||''};
+ if(entry)values.name=entry.name;
+ $('installation-edit-title').textContent=entry?activeInstallationSection.name:'Nieuwe '+activeInstallationSection.name.toLowerCase();
+ $('installation-edit-icon').replaceChildren(iconFor(activeInstallationSection.name));
+ show('installation-form',false);show('installation-wizard',true);screen('installation-editor');renderHeatingWizard();
+}
+function renderHeatingWizard(){
+ const w=heatingWizard;if(!w)return;const steps=heatingSteps();w.step=Math.min(w.step,steps.length-1);
+ const current=steps[w.step],host=$('installation-wizard');host.replaceChildren();
+ const root=document.createElement('div');root.className='epc-wizard-step epc-heating-wizard';
+ const top=document.createElement('div');top.className='epc-wizard-top';
+ if(w.step>0){const back=document.createElement('button');back.type='button';back.className='epc-wizard-back';const img=document.createElement('img');img.src='ico/vorige-pijl.svg';img.alt='Vorige';back.append(img);back.onclick=()=>{w.step--;renderHeatingWizard()};top.append(back)}
+ const title=document.createElement('h2');title.textContent=current.title.toLocaleLowerCase('nl-BE').replace(/^./,c=>c.toLocaleUpperCase('nl-BE'));top.append(title);
+ const progress=document.createElement('span');progress.className='epc-wizard-progress';progress.textContent=(w.step+1)+' / '+steps.length;top.append(progress);root.append(top);
+ const advance=()=>{w.step=Math.min(w.step+1,heatingSteps().length-1);renderHeatingWizard()};
+ if(current.choices){const grid=document.createElement('div');grid.className='epc-wizard-grid';for(const value of current.choices){const b=document.createElement('button');b.type='button';b.className='epc-wizard-choice'+(w.values[current.key]===value?' selected':'');b.textContent=HW_SHORT[value]||value;b.title=value;b.lang='nl';b.onclick=()=>{w.values[current.key]=value;const keys=heatingSteps().map(x=>x.key);for(const k of Object.keys(w.values)){if(!keys.includes(k)&&k!=='name')delete w.values[k]}advance()};grid.append(b)}root.append(grid)}
+ else if(current.key==='device_details'){const fields=document.createElement('div');fields.className='epc-heating-fields';for(const [key,label,tag] of [['brand','Merk','input'],['model','Type / model','input'],['year','Referentiejaar fabricage','input'],['remarks','Opmerking','textarea']]){const wrap=document.createElement('label');wrap.className='epc-heating-field';wrap.textContent=label;const field=document.createElement(tag);field.className='epc-wizard-input';field.value=w.values[key]||'';if(key==='year'){field.type='number';field.min='1800';field.max='2100'}field.oninput=()=>{w.values[key]=field.value};wrap.append(field);fields.append(wrap)}root.append(fields);const next=document.createElement('button');next.type='button';next.className='epc-wizard-next';next.textContent='Volgende';next.onclick=advance;root.append(next)}
+ else{const input=document.createElement(current.key==='remarks'?'textarea':'input');input.className='epc-wizard-input';input.placeholder=current.title==='NAAMGEVING'?'Naam':current.title;input.value=w.values[current.key]??(current.key==='name'?(w.kind==='heating'?'OPW-'+[w.values.brand,w.values.model].filter(Boolean).join('-'):'RV '+(w.existingNames.filter(x=>/^RV\s*\d+$/i.test(x)).reduce((m,x)=>Math.max(m,Number(x.match(/\d+/)[0])),0)+1)):'');if(current.key==='year'){input.type='number';input.min='1800';input.max='2100'}input.oninput=()=>{w.values[current.key]=input.value};root.append(input);
+ const next=document.createElement('button');next.type='button';next.className='epc-wizard-next';next.textContent=current.key==='name'?'Opslaan':'Volgende';next.onclick=async()=>{const value=input.value.trim();if(current.key==='name'){if(!value){note('Vul een naam in.');input.focus();return}w.values.name=value;await saveHeatingWizard()}else{w.values[current.key]=value;advance()}};root.append(next)}
+ host.append(root);window.scrollTo({top:0,behavior:'instant'});
+}
+async function saveHeatingWizard(){
+ const w=heatingWizard;if(!w)return;
+ const name=String(w.values.name||'').trim();
+ if(w.existingNames.some(x=>x.toLocaleLowerCase('nl-BE')===name.toLocaleLowerCase('nl-BE')&&x!==w.originalName)){note('Deze naam bestaat al. Kies een andere naam.');return}
+ if(w.kind==='heating_system'&&(w.values.type==='Centraal'||(w.values.type==='Onvolledig (enkel opwekker)'&&w.values.known_generator==='Ja'))&&!w.values.generator_link){note('Selecteer een opwekker.');return}
+ const {name:ignored,remarks,...details}=w.values;
+ const payload={dossier_id:activeDossier.id,section_id:activeInstallationSection.id,name,remarks:remarks||null,details};
+ const {error}=activeInstallation?await db.from('epc_installation_entries').update(payload).eq('id',activeInstallation.id).eq('dossier_id',activeDossier.id):await db.from('epc_installation_entries').insert(payload);
+ if(error)return err(error);
+ heatingWizard=null;show('installation-wizard',false);show('installation-form',true);screen('installation-page');await loadInstallationEntries();await loadSectionPhotos('installation',activeInstallationSection.id,'installation-page');note('Installatie opgeslagen.');
+}
 
 init();})();
