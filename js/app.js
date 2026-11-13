@@ -72,7 +72,7 @@ function init(){const c=config();if(!c){screen('auth');note('Appconfiguratie ont
    // Only opaque IDs are persisted; never credentials or dossier details.
    route({restore:true});
   })}catch(e){screen('auth');err(e)}}
-function screen(id){activeScreen=id;persistInspectionView();['auth','home','editor','detail','facade-page','construction-editor','envelope-editor','envelope-page','installation-page','installation-editor'].forEach(x=>show(x,x===id));show('logout',!!user);show('header-home',!!user);document.body.classList.toggle('app-logged-in',!!user);requestAnimationFrame(refreshScrollTop)}
+function screen(id){activeScreen=id;persistInspectionView();['auth','home','editor','detail','facade-page','construction-editor','envelope-editor','envelope-page','installation-page','installation-editor','opening-page','opening-editor'].forEach(x=>show(x,x===id));show('logout',!!user);show('header-home',!!user);document.body.classList.toggle('app-logged-in',!!user);requestAnimationFrame(refreshScrollTop)}
 async function route({restore=false}={}){
  const token=++routeToken;
  if(!db){screen('auth');return}
@@ -97,7 +97,33 @@ async function load(){if(!workspace)return;const {data,error}=await db.from('epc
 function dossierType(d){const t=String(d.dossier_type||d.type||d.certificate_type||d.epc_type||d.destination||'RES').toLowerCase();return t.includes('knr')?'kNR':t==='gd'||t.includes('gemeen')?'GD':'RES'}
 function render(){const q=$('search').value.toLocaleLowerCase(),year=$('year-filter').value,types=[...document.querySelectorAll('.filter-check input:checked')].map(c=>c.value);let results=items.filter(d=>(year==='all'||String(d.inspection_date||'').startsWith(year))&&types.includes(dossierType(d))&&[d.dossier_number,d.client_name,...Object.values(d.property_address||{})].join(' ').toLocaleLowerCase().includes(q));const dir=$('sort-direction').value==='asc'?1:-1;results.sort((a,b)=>dir*(sortBy==='name'?String(a.dossier_number||'').localeCompare(String(b.dossier_number||''),'nl',{numeric:true}):String(a.inspection_date||a.updated_at||'').localeCompare(String(b.inspection_date||b.updated_at||''))));$('dossiers').replaceChildren();if(!results.length){const empty=document.createElement('div');empty.className='empty-state';empty.innerHTML='<span class="empty-icon">▤</span><p>Geen dossiers gevonden.<br>Maak een dossier aan.</p>';$('dossiers').append(empty);return}results.forEach(d=>{const row=document.createElement('button');row.type='button';row.className='dossier-row';row.onclick=()=>open(d.id);const type=dossierType(d),tag=document.createElement('span');tag.className='type-tag type-'+type;tag.textContent=type;const txt=document.createElement('span');txt.className='dossier-row-text';const strong=document.createElement('strong');strong.textContent=d.dossier_number?'Dossier '+d.dossier_number:'Dossier zonder nummer';const address=document.createElement('small');const a=d.property_address||{};address.textContent=[a.street,a.number,[a.postal,a.city].filter(Boolean).join(' ')].filter(Boolean).join(', ');const date=document.createElement('small');date.textContent='Bezoek: '+(d.inspection_date?new Date(d.inspection_date+'T12:00:00').toLocaleDateString('nl-BE'):'—');txt.append(strong,address,date);const chevron=document.createElement('span');chevron.className='row-chevron';chevron.textContent='›';row.append(tag,txt,chevron);$('dossiers').append(row)})}
 const f=$('dossier-form');function field(name){return f.elements.namedItem(name)}
-function edit(d){current=d?.id||null;f.reset();$('editor-title').textContent=d?'Dossier '+(d.dossier_number||''):'Nieuw dossier';show('delete-dossier',!!d);$('back').setAttribute('aria-label',d?'Terug naar dossier':'Terug naar dossiers');screen('editor');if(d){for(const k of ['dossier_number','inspection_date','client_kind','client_name','client_vat_number','client_phone','client_email'])field(k).value=d[k]||'';for(const [prefix,obj] of [['client',d.client_address],['property',d.property_address]])for(const k of ['street','number','postal','city'])field(prefix+'_'+k).value=obj?.[k]||'';$('same').checked=!!d.client_address_same_as_property;field('dossier_type').value=d.dossier_type||'RES'}toggle()}
+function edit(d){current=d?.id||null;f.reset();if(!d)renderDossierOverview(null);$('editor-title').textContent=d?'Dossier '+(d.dossier_number||''):'Nieuw dossier';show('delete-dossier',!!d);$('back').setAttribute('aria-label',d?'Terug naar dossier':'Terug naar dossiers');screen('editor');if(d){for(const k of ['dossier_number','inspection_date','client_kind','client_name','client_vat_number','client_phone','client_email'])field(k).value=d[k]||'';for(const [prefix,obj] of [['client',d.client_address],['property',d.property_address]])for(const k of ['street','number','postal','city'])field(prefix+'_'+k).value=obj?.[k]||'';$('same').checked=!!d.client_address_same_as_property;field('dossier_type').value=d.dossier_type||'RES'}toggle();renderDossierOverview(d)}
+
+// Dossiergegevens: dezelfde compacte, per veld bewerkbare weergave als installaties.
+let dossierOverviewEdit=null;
+function renderDossierOverview(d){
+ let wrap=$('dossier-overview');
+ if(!wrap){wrap=document.createElement('div');wrap.id='dossier-overview';wrap.className='epc-dossier-overview';f.before(wrap)}
+ wrap.replaceChildren();wrap.classList.toggle('hidden',!d);f.classList.toggle('epc-dossier-form-hidden',!!d);
+ if(!d)return;
+ dossierOverviewEdit=null;
+ const heading=document.createElement('p');heading.textContent='Tik op een gegeven om het te bekijken of aan te passen.';wrap.append(heading);
+ const fields=[['Dossiergegevens',['dossier_number','inspection_date','dossier_type']],['Opdrachtgever',['client_kind','client_name','client_phone','client_email','client_vat_number','same','client_street','client_number','client_postal','client_city']],['Te certificeren pand',['property_street','property_number','property_postal','property_city']]];
+ const labels={dossier_number:'Dossiernummer',inspection_date:'Datum plaatsbezoek',dossier_type:'Type dossier',client_kind:'Type opdrachtgever',client_name:'Naam opdrachtgever',client_phone:'Telefoonnummer',client_email:'E-mail',client_vat_number:'Btw-nummer',same:'Zelfde adres als te certificeren pand',client_street:'Straat opdrachtgever',client_number:'Nummer opdrachtgever',client_postal:'Postcode opdrachtgever',client_city:'Gemeente opdrachtgever',property_street:'Straat pand',property_number:'Nummer pand',property_postal:'Postcode pand',property_city:'Gemeente pand'};
+ function source(k){return k==='same'?$('same'):field(k)}
+ function visible(k){if(k==='client_vat_number')return field('client_kind').value==='onderneming';if(k.startsWith('client_')&&['client_street','client_number','client_postal','client_city'].includes(k))return !$('same').checked;return true}
+ function display(k){const el=source(k);if(k==='same')return el.checked?'Ja':'Nee';if(el.tagName==='SELECT')return el.selectedOptions[0]?.textContent||'Niet ingevuld';if(k==='inspection_date'&&el.value)return new Date(el.value+'T12:00:00').toLocaleDateString('nl-BE');return el.value||'Niet ingevuld'}
+ function draw(){wrap.replaceChildren();wrap.append(heading);
+ for(const [group,keys] of fields){const title=document.createElement('h2');title.textContent=group;wrap.append(title);
+ for(const k of keys){if(!visible(k))continue;const block=document.createElement('div');block.className='epc-dossier-field';const label=document.createElement('label');label.textContent=labels[k];block.append(label);
+ const button=document.createElement('button');button.type='button';button.className='epc-dossier-value';button.textContent=display(k);button.setAttribute('aria-expanded',String(dossierOverviewEdit===k));button.onclick=()=>{dossierOverviewEdit=dossierOverviewEdit===k?null:k;draw()};block.append(button);
+ if(dossierOverviewEdit===k){const editor=document.createElement('div');editor.className='epc-dossier-inline';const original=source(k);const input=original.cloneNode(true);input.removeAttribute('id');input.removeAttribute('name');input.required=false;if(original.tagName==='SELECT')input.value=original.value;else if(original.type==='checkbox')input.checked=original.checked;else input.value=original.value;editor.append(input);
+ const actions=document.createElement('div');actions.className='epc-dossier-inline-actions';const cancel=document.createElement('button');cancel.type='button';cancel.className='secondary';cancel.textContent='Annuleren';cancel.onclick=()=>{dossierOverviewEdit=null;draw()};const confirm=document.createElement('button');confirm.type='button';confirm.textContent='Bevestigen';confirm.onclick=()=>{if(original.type==='checkbox')original.checked=input.checked;else original.value=input.value;toggle();dossierOverviewEdit=null;draw()};actions.append(cancel,confirm);editor.append(actions);block.append(editor)}wrap.append(block)} }
+ const save=document.createElement('button');save.type='button';save.className='epc-dossier-save';save.textContent='Wijzigingen opslaan';save.onclick=()=>{if(dossierOverviewEdit){note('Bevestig of sluit eerst het geopende veld.');return}f.requestSubmit()};wrap.append(save);
+ const del=document.createElement('button');del.type='button';del.className='secondary epc-dossier-delete';del.textContent='Dossier verwijderen';del.onclick=()=>$('delete-dossier').click();wrap.append(del);
+ }draw();
+}
+
 let dossierOpenVersion=0;
 async function open(id){
  const version=++dossierOpenVersion;
@@ -247,12 +273,13 @@ async function loadConstructions(){
   const name=document.createElement('strong');name.textContent=d.name;
   const sub=document.createElement('small');sub.textContent='Gevelconstructie';t.append(name,sub);
   const arrow=document.createElement('span');arrow.className='row-chevron';arrow.textContent='›';
-  b.append(icon,t,arrow);b.onclick=()=>editConstruction(d);
+  b.append(icon,t,arrow);b.onclick=()=>openConstructionOpenings(d);
+  const pencil=document.createElement('button');pencil.type='button';pencil.className='construction-item-edit';pencil.title='Constructie bewerken';pencil.setAttribute('aria-label','Bewerk '+d.name);pencil.textContent='✎';pencil.onclick=()=>editConstruction(d);
   const del=document.createElement('button');del.type='button';del.className='construction-item-delete';
   del.title='Verwijder uit deze gevel';del.setAttribute('aria-label','Verwijder '+d.name+' uit '+activeFacade.name);
   const img=document.createElement('img');img.src='ico/delete.svg';img.alt='';img.className='delete-icon';del.append(img);
   del.onclick=()=>removeConstructionFromFacade(d);
-  row.append(b,del);host.append(row);
+  row.append(b,pencil,del);host.append(row);
  }
 }
 $('facade-back').onclick=()=>{activeFacade=null;screen('detail');renderDetail();loadFacades()};
@@ -570,7 +597,7 @@ async function loadInstallationEntries(){
   const icon=document.createElement('span');icon.className='construction-icon';icon.append(iconFor(activeInstallationSection.name));
   const txt=document.createElement('span');txt.className='facade-text';const name=document.createElement('strong');name.textContent=entry.name;const sub=document.createElement('small');sub.textContent=activeInstallationSection.name;txt.append(name,sub);
   const arrow=document.createElement('span');arrow.className='row-chevron';arrow.textContent='›';b.append(icon,txt,arrow);b.onclick=()=>editInstallation(entry);
-  const del=document.createElement('button');del.type='button';del.className='construction-item-delete';del.title='Installatie verwijderen';const img=document.createElement('img');img.src='ico/delete.svg';img.className='delete-icon';img.alt='';del.append(img);del.onclick=()=>removeInstallation(entry);
+  const del=document.createElement('button');del.type='button';del.className='construction-item-delete';del.title='Installatie verwijderen';const img=document.createElement('img');img.src='ico/delete.svg';img.className='delete-icon';img.alt='';del.append(img);del.onclick=async()=>{if(!await removeInstallation(entry))return;const {data}=await db.from('epc_installation_sections').select('id').eq('id',activeInstallationSection.id).is('deleted_at',null).maybeSingle();if(!data){activeInstallationSection=null;screen('detail');await loadFacades()}};
   row.append(b,del);host.append(row);
  }
 }
@@ -707,29 +734,31 @@ function renderInstallationOverview(){
   const button=document.createElement('button');button.type='button';button.className='epc-overview-value';
   const shown=value===undefined||value===null||value===''?'Niet ingevuld':field.type==='vent-rooms'&&Array.isArray(value)?value.map(id=>o.ventRooms?.find(r=>r.id===id)?.name||id).join(', ')||'Geen':Array.isArray(value)?value.join(', '):String(value);
   const span=document.createElement('span');span.textContent=shown;
-  const arrow=document.createElement('span');arrow.className='row-chevron';arrow.textContent='›';button.append(span,arrow);
-  button.onclick=()=>{o.editing=field.key;renderInstallationOverview()};row.append(button);
+  const arrow=document.createElement('span');arrow.className='row-chevron';arrow.textContent='›';button.append(span);
+  button.onclick=()=>{o.editing=o.editing===field.key?null:field.key;renderInstallationOverview()};row.append(button);
   if(o.editing===field.key){
    const editor=document.createElement('div');editor.className='epc-overview-editor';
    let control;
    const choices=field.choices;
    if(field.type==='vent-rooms'){
     control=document.createElement('div');control.className='epc-overview-choices';
-    for(const room of o.ventRooms||[]){const b=document.createElement('button');b.type='button';b.className='epc-wizard-choice'+((Array.isArray(value)&&value.includes(room.id))?' selected':'');b.textContent=room.name;b.onclick=()=>{const ids=new Set(o.values.served_rooms||[]);ids.has(room.id)?ids.delete(room.id):ids.add(room.id);o.values.served_rooms=[...ids];renderInstallationOverview()};control.append(b)}
-    editor.append(control);const done=document.createElement('button');done.type='button';done.className='epc-wizard-next';done.textContent='Bevestigen';done.onclick=()=>{o.editing=null;renderInstallationOverview()};editor.append(done);
+    const draftRooms=new Set(Array.isArray(value)?value:[]);
+    for(const room of o.ventRooms||[]){const b=document.createElement('button');b.type='button';b.className='epc-wizard-choice'+((Array.isArray(value)&&value.includes(room.id))?' selected':'');b.textContent=room.name;b.onclick=()=>{draftRooms.has(room.id)?draftRooms.delete(room.id):draftRooms.add(room.id);b.classList.toggle('selected',draftRooms.has(room.id))};control.append(b)}
+    editor.append(control);const done=document.createElement('button');done.type='button';done.className='epc-wizard-next';done.textContent='Bevestigen';done.onclick=()=>{o.values.served_rooms=[...draftRooms];o.editing=null;renderInstallationOverview()};editor.append(done);
    }else if(field.type==='cooling-rooms'){
     control=buildCoolingRoomPicker(Array.isArray(value)?value:[],selected=>{o.values.rooms=selected;o.editing=null;renderInstallationOverview()});editor.append(control);
    }else if(Array.isArray(choices)&&choices.length){
     control=document.createElement('div');control.className='epc-overview-choices';
     for(const choice of choices){const b=document.createElement('button');b.type='button';b.className='epc-wizard-choice'+(String(value??'')===String(choice)?' selected':'');b.textContent=HW_SHORT[choice]||choice;b.title=choice;
-     b.onclick=()=>{if(activeInstallationSection.kind==='hot_water'&&o.values[field.key]!==choice){
+     b.onclick=()=>{for(const tile of control.querySelectorAll('.epc-wizard-choice'))tile.classList.remove('selected');b.classList.add('selected');editor.dataset.draftChoice=choice};control.append(b)}
+    const confirmChoice=document.createElement('button');confirmChoice.type='button';confirmChoice.className='epc-wizard-next';confirmChoice.textContent='Bevestigen';confirmChoice.onclick=()=>{if(!Object.prototype.hasOwnProperty.call(editor.dataset,'draftChoice')){o.editing=null;renderInstallationOverview();return}const choice=editor.dataset.draftChoice;if(activeInstallationSection.kind==='hot_water'&&o.values[field.key]!==choice){
       if(field.key==='type')for(const k of ['heating','energy','sww_generator','heating_system_id'])delete o.values[k];
       if(field.key==='heating'){delete o.values.heating_system_id;delete o.values.energy;delete o.values.sww_generator}
       if(field.key==='energy')delete o.values.sww_generator;
       if(field.key==='tank_present'&&choice==='Nee')for(const k of ['tank_method','tank','tank_circumference','tank_height','tank_insulation'])delete o.values[k];
       if(field.key==='tank_method')for(const k of ['tank','tank_circumference','tank_height'])delete o.values[k];
       if(field.key==='pipes_type'){delete o.values.pipes_insulation;delete o.values.pipes_length}
-     }if(activeInstallationSection.kind==='room_ventilation'&&field.key==='room'){o.values.room_type=VENT_WET_ROOMS.includes(choice)?'Natte ruimte':choice==='Andere'?'': 'Droge ruimte';delete o.values.type;if(choice!=='Andere')delete o.values.custom_room;}if(activeInstallationSection.kind==='room_ventilation'&&field.key==='room_type')delete o.values.type;o.values[field.key]=choice;o.editing=null;renderInstallationOverview()};control.append(b)}
+     }if(activeInstallationSection.kind==='room_ventilation'&&field.key==='room'){o.values.room_type=VENT_WET_ROOMS.includes(choice)?'Natte ruimte':choice==='Andere'?'': 'Droge ruimte';delete o.values.type;if(choice!=='Andere')delete o.values.custom_room;}if(activeInstallationSection.kind==='room_ventilation'&&field.key==='room_type')delete o.values.type;o.values[field.key]=choice;o.editing=null;renderInstallationOverview()};editor.append(confirmChoice);
    }else{
     const def=(installationDefinitions[activeInstallationSection.kind]||[]).find(d=>d.key===field.key);
     if(def&&['select','roof-link','heating-link'].includes(def.type)){
@@ -750,6 +779,7 @@ function renderInstallationOverview(){
 }
 async function saveInstallationOverview(){
  const o=installationOverview;if(!o)return;
+ if(o.editing){note('Bevestig eerst het geopende gegeven of sluit het zonder te bewaren.');return}
  const name=String(o.values.name||'').trim();if(!name){note('Vul een naam in.');return}
  const {data:duplicates,error:checkError}=await db.from('epc_installation_entries').select('id,name').eq('dossier_id',activeDossier.id).eq('section_id',activeInstallationSection.id).is('deleted_at',null);
  if(checkError)return err(checkError);
@@ -759,17 +789,103 @@ async function saveInstallationOverview(){
  if(error)return err(error);
  installationOverview=null;show('installation-wizard',false);show('installation-form',true);screen('installation-page');await loadInstallationEntries();note('Installatie opgeslagen.');
 }
-async function removeInstallation(entry){if(!confirm('Installatie "'+entry.name+'" verwijderen?'))return false;const {error}=await db.from('epc_installation_entries').update({deleted_at:new Date().toISOString()}).eq('id',entry.id).eq('section_id',activeInstallationSection.id).eq('dossier_id',activeDossier.id);if(error){err(error);return false}await loadInstallationEntries();note('Installatie verwijderd.');return true}
+// Verwijderafhankelijkheden vooraf controleren en uitsluitend na bevestiging verwerken.
+async function linkedDeletionPlan(entryIds){
+ const {data:sections,error:se}=await db.from('epc_installation_sections').select('id,kind').eq('dossier_id',activeDossier.id).is('deleted_at',null);
+ if(se)throw se;
+ const {data:entries,error:ee}=await db.from('epc_installation_entries').select('id,section_id,name,details').eq('dossier_id',activeDossier.id).is('deleted_at',null);
+ if(ee)throw ee;
+ const kinds=new Map((sections||[]).map(x=>[x.id,x.kind]));
+ const all=entries||[], deleted=new Set(entryIds), updated=new Map();
+ let changed=true;
+ while(changed){
+  changed=false;
+  for(const e of all){
+   if(deleted.has(e.id))continue;
+   const kind=kinds.get(e.section_id),d=e.details||{};
+   if(kind==='heating_system'&&all.some(x=>deleted.has(x.id)&&kinds.get(x.section_id)==='heating'&&(
+      [d.generator_id,d.heating_generator_id,d.opwekker_id,d.opwekkerId].includes(x.id)||
+      [d.generator_link,d.generator,d.opwekker,d.heating_generator].includes(x.name)))){
+    deleted.add(e.id);changed=true;continue;
+   }
+   if(kind==='hot_water'&&all.some(x=>deleted.has(x.id)&&kinds.get(x.section_id)==='heating_system'&&(
+      d.heating_system_id===x.id||d.heating===x.name||d.heating_system===x.name))){deleted.add(e.id);changed=true;continue}
+   if(kind==='ventilation_unit'&&Array.isArray(d.served_rooms)){
+    const remaining=d.served_rooms.filter(id=>!deleted.has(id));
+    if(remaining.length!==d.served_rooms.length){
+     if(!remaining.length){deleted.add(e.id);updated.delete(e.id);changed=true}
+     else updated.set(e.id,{...d,served_rooms:remaining});
+    }
+   }
+  }
+ }
+ return {deleted:[...deleted],updated:[...updated].filter(([id])=>!deleted.has(id)),entries:all,kinds};
+}
+async function executeLinkedDeletion(plan){
+ const stamp=new Date().toISOString();
+ // Eerst afhankelijke records verwijderen. Zo blijven geen verwijzingen achter.
+ const priority={hot_water:0,ventilation_unit:0,heating_system:1,heating:2,room_ventilation:2};
+ const ordered=plan.deleted.slice().sort((a,b)=>{
+  const x=plan.entries.find(e=>e.id===a),y=plan.entries.find(e=>e.id===b);
+  return (priority[plan.kinds.get(x?.section_id)]??3)-(priority[plan.kinds.get(y?.section_id)]??3);
+ });
+ for(const id of ordered){const {error}=await db.from('epc_installation_entries').update({deleted_at:stamp}).eq('id',id).eq('dossier_id',activeDossier.id).is('deleted_at',null);if(error)throw error}
+ for(const [id,details] of plan.updated){const {error}=await db.from('epc_installation_entries').update({details}).eq('id',id).eq('dossier_id',activeDossier.id).is('deleted_at',null);if(error)throw error}
+ // Verwijder alleen containers die door deze actie hun laatste installatie verliezen.
+ // Containers die al leeg waren, blijven onaangeroerd.
+ const affectedSections=[...new Set(plan.entries.filter(e=>plan.deleted.includes(e.id)).map(e=>e.section_id))];
+ for(const sectionId of affectedSections){
+  const {data:remaining,error:remainingError}=await db.from('epc_installation_entries')
+   .select('id').eq('dossier_id',activeDossier.id).eq('section_id',sectionId)
+   .is('deleted_at',null).limit(1);
+  if(remainingError)throw remainingError;
+  if(!remaining?.length){
+   const {error:sectionError}=await db.from('epc_installation_sections')
+    .update({deleted_at:stamp}).eq('id',sectionId).eq('dossier_id',activeDossier.id).is('deleted_at',null);
+   if(sectionError)throw sectionError;
+  }
+ }
+}
+async function removeInstallation(entry){
+ try{
+  const plan=await linkedDeletionPlan([entry.id]);
+  const extras=plan.deleted.filter(id=>id!==entry.id).map(id=>plan.entries.find(e=>e.id===id)?.name).filter(Boolean);
+  const changes=plan.updated.length;
+  const sourceKind=plan.kinds.get(entry.section_id);
+  const affected=plan.deleted.filter(id=>id!==entry.id).map(id=>plan.entries.find(e=>e.id===id)).filter(Boolean);
+  let warning='';
+  if(sourceKind==='room_ventilation'){
+   warning=affected.filter(e=>plan.kinds.get(e.section_id)==='ventilation_unit').map(e=>'Na verwijdering van deze ruimte zal ventilatie-unit "'+e.name+'" ook verwijderd worden omdat deze dan geen gekoppelde ruimtes meer heeft.').join('\n');
+  }else if(sourceKind==='heating'){
+   const systems=affected.filter(e=>plan.kinds.get(e.section_id)==='heating_system');
+   const other=affected.filter(e=>plan.kinds.get(e.section_id)!=='heating_system');
+   warning=systems.map(e=>'Na verwijdering van deze opwekker zal verwarmingsinstallatie "'+e.name+'" ook verwijderd worden omdat deze dan geen gekoppelde opwekker meer heeft.').join('\n');
+   if(other.length)warning+=(warning?'\n\n':'')+'Ook deze afhankelijke installaties worden verwijderd:\n• '+other.map(e=>e.name).join('\n• ');
+  }else if(affected.length){
+   warning='Ook deze afhankelijke installaties worden verwijderd omdat hun koppeling niet meer bestaat:\n• '+affected.map(e=>e.name).join('\n• ');
+  }
+  if(warning)warning='\n\n'+warning;
+  const updateWarning='';
+  if(!confirm('Installatie "'+entry.name+'" verwijderen?'+warning+updateWarning+'\n\nDeze actie kan niet ongedaan worden gemaakt.'))return false;
+  await executeLinkedDeletion(plan);await loadInstallationEntries();note('Installatie en eventuele afhankelijke onderdelen verwijderd.');return true;
+ }catch(error){err(error);return false}
+}
 $('installation-back').onclick=()=>{screen('detail');loadFacades()};
 $('installation-section-delete').onclick=async()=>{
- if(!confirm(activeInstallationSection.name+' verwijderen, inclusief alle bijbehorende installaties?'))return;
- const stamp=new Date().toISOString();const {error:childrenError}=await db.from('epc_installation_entries').update({deleted_at:stamp}).eq('section_id',activeInstallationSection.id).eq('dossier_id',activeDossier.id).is('deleted_at',null);if(childrenError)return err(childrenError);
- const {error}=await db.from('epc_installation_sections').update({deleted_at:stamp}).eq('id',activeInstallationSection.id).eq('dossier_id',activeDossier.id);if(error)return err(error);
- activeInstallationSection=null;screen('detail');await loadFacades();note('Onderdeel verwijderd.');
+ try{
+  const {data,error}=await db.from('epc_installation_entries').select('id').eq('section_id',activeInstallationSection.id).eq('dossier_id',activeDossier.id).is('deleted_at',null);
+  if(error)throw error;
+  const plan=await linkedDeletionPlan((data||[]).map(x=>x.id));
+  const dependent=plan.deleted.length-(data||[]).length;
+  if(!confirm(activeInstallationSection.name+' verwijderen, inclusief alle bijbehorende installaties?'+(dependent>0?'\n\nOok '+dependent+' gekoppelde installatie(s) worden verwijderd.':'')+'\n\nDeze actie kan niet ongedaan worden gemaakt.'))return;
+  await executeLinkedDeletion(plan);
+  const {error:sectionError}=await db.from('epc_installation_sections').update({deleted_at:new Date().toISOString()}).eq('id',activeInstallationSection.id).eq('dossier_id',activeDossier.id).is('deleted_at',null);if(sectionError)throw sectionError;
+  activeInstallationSection=null;screen('detail');await loadFacades();note('Onderdeel verwijderd.');
+ }catch(error){err(error)}
 };
 $('installation-add').onclick=()=>editInstallation(null);
 $('installation-edit-back').onclick=$('installation-cancel').onclick=()=>{ventilationWizard=null;installationOverview=null;heatingWizard=null;coolingWizard=null;swwWizard=null;simpleInstallationWizard=null;show('installation-wizard',false);show('installation-form',true);screen('installation-page');loadInstallationEntries()};
-$('installation-delete').onclick=async()=>{if(activeInstallation&&await removeInstallation(activeInstallation))screen('installation-page')};
+$('installation-delete').onclick=async()=>{if(activeInstallation&&await removeInstallation(activeInstallation)){const {data}=await db.from('epc_installation_sections').select('id').eq('id',activeInstallationSection.id).is('deleted_at',null).maybeSingle();if(data){screen('installation-page')}else{activeInstallationSection=null;screen('detail');await loadFacades()}}};
 $('installation-form').onsubmit=async event=>{
  event.preventDefault();const form=$('installation-form'),fd=new FormData(form),details={};for(const def of installationDefinitions[activeInstallationSection.kind]||[])details[def.key]=fd.get(def.key)||null;
  const payload={dossier_id:activeDossier.id,section_id:activeInstallationSection.id,name:String(fd.get('name')||'').trim(),remarks:String(fd.get('remarks')||'').trim()||null,details};
@@ -1555,5 +1671,102 @@ async function saveHeatingWizard(){
  if(error)return err(error);
  heatingWizard=null;show('installation-wizard',false);show('installation-form',true);screen('installation-page');await loadInstallationEntries();await loadSectionPhotos('installation',activeInstallationSection.id,'installation-page');note('Installatie opgeslagen.');
 }
+
+
+// Openingen per gevelconstructie; types zijn dossierbreed herbruikbaar.
+let openingConstruction=null, openingRecord=null, openingType=null, openingDraft={}, openingStep=0, openingMode='wizard';
+const openingProfiles=['Geen profiel','Metaal, NTO','Metaal, TO','Alu, TO ≥ 2000','Alu, TO ≥ 2015','PVC, 1K of onbekend','PVC, ≥ 2K','PVC, ≥ 2K, ≥ 2000','Hout','Hout, ≥ 100 mm','Hout, ≥ 150 mm'];
+const openingInsulation=['Geen isolatie','Onbekend','MW','PUR/PIR','XPS','EPS','Andere'];
+const openingSpecs={
+ kind:{label:'Type opening',options:['Glas','Deur','Paneel']},
+ width_cm:{label:'Breedte (cm)',type:'number'},height_cm:{label:'Hoogte (cm)',type:'number'},quantity:{label:'Aantal',type:'number'},
+ spacer:{label:'Afstandshouder',options:['Geen aanduiding','HR+','HR++']},
+ glazing:{label:'Glastype',options:['EG','PC (2 à 3W)','Glasdals','DG','PC (4W)','3DG geen coating','HR < 2000','HR ≥ 2000','3DG met coating']},
+ profile:{label:'Profiel',options:openingProfiles},
+ shading:{label:'Buitenzonwering',options:['Niet aanwezig','Manueel','Automatisch','Vast']},
+ insulation:{label:'Isolatie',options:openingInsulation}, thickness:{label:'Isolatiedikte (mm)',type:'number'},
+ renovation:{label:'Referentiejaar renovatie',type:'number'},air:{label:'Luchtlaag',options:['Afwezig','Onbekend','Aanwezig']},
+ panel_type:{label:'Paneeltype',options:['Metaal','Niet-metaal']},door_type:{label:'Deurtype',options:['Metaal','Niet-metaal']},
+ name:{label:'Naam',type:'text'}
+};
+function openingKeys(d){const k=d.kind;const fields=['kind','width_cm','height_cm','quantity'];
+ if(k==='Glas')fields.push('spacer','glazing','profile','shading');
+ if(k==='Deur'||k==='Paneel'){
+  fields.push('insulation');if(d.insulation&&!['Geen isolatie','Onbekend'].includes(d.insulation))fields.push('thickness');
+  if(d.insulation==='Onbekend')fields.push('renovation');
+  fields.push('air',k==='Deur'?'door_type':'panel_type','profile');
+ }
+ fields.push('name');return fields;
+}
+function openingButton(text,click,cls=''){const b=document.createElement('button');b.type='button';b.textContent=text;b.className=cls;b.onclick=click;return b}
+function openingField(key,draft,change){const spec=openingSpecs[key],wrap=document.createElement('div');wrap.className='opening-field';
+ const title=document.createElement('strong');title.textContent=spec.label;wrap.append(title);
+ if(spec.options){const grid=document.createElement('div');grid.className='opening-choices';for(const option of spec.options){
+  const b=openingButton(option,()=>change(key,option),'opening-choice'+(draft[key]===option?' selected':''));grid.append(b);
+ }wrap.append(grid)}else{const inp=document.createElement('input');inp.type=spec.type||'text';inp.value=draft[key]??'';inp.placeholder=spec.label;
+ if(inp.type==='number'){inp.min=key==='quantity'?'1':'0';inp.step=key==='renovation'||key==='quantity'?'1':'any'}
+ inp.oninput=()=>{draft[key]=inp.value};wrap.append(inp)}return wrap;
+}
+async function openConstructionOpenings(c){openingConstruction=c;openingRecord=null;$('opening-page-title').textContent=c.name;screen('opening-page');await loadOpeningRows()}
+async function loadOpeningRows(){const {data,error}=await db.from('epc_openings').select('*,epc_opening_types(*)').eq('dossier_id',activeDossier.id).eq('facade_construction_id',openingConstruction.id).is('deleted_at',null).order('created_at');if(error)return err(error);
+ const host=$('opening-list');host.replaceChildren();if(!data?.length){const p=document.createElement('p');p.textContent='Nog geen openingen toegevoegd.';host.append(p)}
+ for(const o of data||[]){const row=document.createElement('div');row.className='construction-list-item';const b=openingButton(o.name+'  ›',()=>openOpeningEditor(o),'construction-row');const del=openingButton('🗑',async()=>{if(!confirm('Opening "'+o.name+'" verwijderen?'))return;const {error}=await db.from('epc_openings').update({deleted_at:new Date().toISOString()}).eq('id',o.id).eq('dossier_id',activeDossier.id);if(error)return err(error);await loadOpeningRows()},'construction-item-delete');row.append(b,del);host.append(row)}
+}
+function openingStepKeys(){const k=openingDraft.kind;const arr=[['kind'],['width_cm','height_cm','quantity']];
+ if(k==='Glas')arr.push(['spacer'],['glazing'],['profile'],['shading']);
+ if(k==='Deur'||k==='Paneel'){arr.push(['insulation']);if(openingDraft.insulation&&!['Geen isolatie','Onbekend'].includes(openingDraft.insulation))arr.push(['thickness']);if(openingDraft.insulation==='Onbekend')arr.push(['renovation']);arr.push(['air'],[k==='Deur'?'door_type':'panel_type'],['profile'])}
+ arr.push(['name']);return arr;
+}
+function openingRenderWizard(){
+ const host=$('opening-editor-content');host.replaceChildren();const steps=openingStepKeys();openingStep=Math.min(openingStep,steps.length-1);
+ const keys=steps[openingStep];const choiceOnly=keys.length===1&&!!openingSpecs[keys[0]]?.options;
+ const label=document.createElement('h2');label.textContent='Stap '+(openingStep+1)+' van '+steps.length;host.append(label);
+ for(const key of keys)host.append(openingField(key,openingDraft,(k,v)=>{
+  const changed=openingDraft[k]!==v;openingDraft[k]=v;
+  if(k==='kind'&&changed){for(const old of Object.keys(openingDraft))if(!['kind','width_cm','height_cm','quantity','name'].includes(old))delete openingDraft[old]}
+  if(choiceOnly&&openingStep<openingStepKeys().length-1){openingStep++;openingRenderWizard();}
+  else openingRenderWizard();
+ }));
+ const actions=document.createElement('div');actions.className='opening-actions';
+ if(openingStep)actions.append(openingButton('Vorige',()=>{openingStep--;openingRenderWizard()},'secondary'));
+ if(!choiceOnly){actions.append(openingButton(openingStep===steps.length-1?'Opslaan':'Volgende',async()=>{
+  if(keys.some(k=>!String(openingDraft[k]??'').trim())){note('Vul eerst alle gegevens van deze stap in.');return}
+  if(openingStep<openingStepKeys().length-1){openingStep++;openingRenderWizard()}else await saveOpening();
+ },'epc-wizard-next'))}
+ host.append(actions);
+}
+function openingRenderOverview(){const host=$('opening-editor-content');host.replaceChildren();const hint=document.createElement('p');hint.textContent='Tik op een gegeven om het afzonderlijk te bekijken of aan te passen.';host.append(hint);
+ for(const key of openingKeys(openingDraft)){const row=document.createElement('div');row.className='opening-overview-row';const title=document.createElement('strong');title.textContent=openingSpecs[key].label;const val=openingButton(String(openingDraft[key]??'Niet ingevuld')+'  ›',()=>{
+  const existing=row.querySelector('.opening-inline');if(existing){existing.remove();return}
+  const draft={...openingDraft};const editor=document.createElement('div');editor.className='opening-inline';const field=openingField(key,draft,(k,v)=>{draft[k]=v;field.replaceWith(openingField(key,draft,(kk,vv)=>{draft[kk]=vv}))});editor.append(field);
+  editor.append(openingButton('Bevestigen',()=>{openingDraft={...draft};openingRenderOverview()},'epc-wizard-next'));row.append(editor);
+ },'epc-overview-value');row.append(title,val);host.append(row)}
+ host.append(openingButton('Wijzigingen opslaan',saveOpening,'epc-overview-save'));
+}
+function openOpeningEditor(o=null){openingRecord=o;openingType=o?.epc_opening_types||null;
+ openingDraft=o?{...openingType?.details,kind:openingType?.kind||'Glas',name:o.name,width_cm:o.width_cm,height_cm:o.height_cm,quantity:o.quantity,shading:o.sun_shading,profile:openingType?.profile_type,glazing:openingType?.glazing_type,spacer:openingType?.glazing_holder_marking}:{kind:'',width_cm:'',height_cm:'',quantity:1,name:''};
+ openingStep=0;$('opening-editor-title').textContent=o?o.name:'Nieuwe opening';screen('opening-editor');if(o)openingRenderOverview();else openingRenderWizard();
+}
+async function saveOpening(){const d=openingDraft;if(!d.name?.trim()||!d.kind||!(Number(d.width_cm)>0)||!(Number(d.height_cm)>0)||!(Number(d.quantity)>0)){note('Vul naam, type, geldige afmetingen en aantal in.');return}
+ const details={};for(const k of openingKeys(d))if(!['name','kind','width_cm','height_cm','quantity','profile','glazing','spacer','shading'].includes(k))details[k]=d[k]??null;
+ const typePayload={dossier_id:activeDossier.id,name:d.name.trim(),kind:d.kind,details,profile_type:d.profile||null,glazing_type:d.glazing||null,glazing_holder_marking:d.spacer||null};
+ // Wijzig een gedeeld openingstype niet stilzwijgend voor andere openingen: maak bij bewerken een eigen type.
+ const {data:type,error:typeError}=await db.from('epc_opening_types').insert(typePayload).select('id').single();if(typeError)return err(typeError);
+ const payload={dossier_id:activeDossier.id,facade_construction_id:openingConstruction.id,opening_type_id:type.id,name:d.name.trim(),width_cm:Number(d.width_cm),height_cm:Number(d.height_cm),quantity:Number(d.quantity),sun_shading:d.shading||null};
+ const {error}=openingRecord?await db.from('epc_openings').update(payload).eq('id',openingRecord.id).eq('dossier_id',activeDossier.id):await db.from('epc_openings').insert(payload);
+ if(error)return err(error);screen('opening-page');await loadOpeningRows();note('Opening opgeslagen.');
+}
+async function openingShowDrawer(){const {data,error}=await db.from('epc_openings').select('name,opening_type_id,epc_opening_types(*)').eq('dossier_id',activeDossier.id).is('deleted_at',null);if(error)return err(error);
+ const host=$('opening-drawer-items');host.replaceChildren();host.append(openingButton('Nieuwe opening',()=>{openingCloseDrawer();openOpeningEditor()},'add-option'));
+ const seen=new Set();for(const o of data||[]){if(!o.opening_type_id||seen.has(o.opening_type_id))continue;seen.add(o.opening_type_id);
+ host.append(openingButton(o.name,async()=>{const {data:type,error:e}=await db.from('epc_opening_types').select('*').eq('id',o.opening_type_id).eq('dossier_id',activeDossier.id).single();if(e)return err(e);
+ openingCloseDrawer();openingRecord=null;openingType=type;openingDraft={...type.details,kind:type.kind,name:o.name,width_cm:'',height_cm:'',quantity:1,profile:type.profile_type,glazing:type.glazing_type,spacer:type.glazing_holder_marking};openingStep=1;$('opening-editor-title').textContent='Opening hergebruiken';screen('opening-editor');openingRenderWizard();
+ },'add-option'))}
+ show('opening-overlay');show('opening-drawer');
+}
+function openingCloseDrawer(){show('opening-overlay',false);show('opening-drawer',false)}
+$('opening-back').onclick=()=>{screen('facade-page');loadConstructions()};
+$('opening-editor-back').onclick=()=>{screen('opening-page');loadOpeningRows()};
+$('opening-add').onclick=openingShowDrawer;$('opening-overlay').onclick=$('opening-drawer-close').onclick=openingCloseDrawer;
 
 init();})();

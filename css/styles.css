@@ -662,14 +662,23 @@ main{padding-bottom:24px!important}
 .epc-overview-choices .epc-wizard-choice{min-height:65px;font-size:10px;hyphens:auto;overflow-wrap:normal;word-break:normal}
 .epc-overview-save{margin-top:8px;width:100%}
 
-/* Constructie-overzicht: dezelfde interactie als bij installaties */
-.epc-construction-overview{background:#fff;border-radius:16px;padding:22px 18px;margin:12px 0 30px;display:flex;flex-direction:column;gap:14px}
-.epc-construction-overview>p{font-size:12px;color:#315578;margin:0 0 6px}
-.epc-overview-row{display:flex;flex-direction:column;gap:6px}
-.epc-overview-row>strong{font-size:12px;color:#092d4d}
-.epc-overview-value{border:0;border-radius:6px;background:#d9f7e9;color:#052b4d;padding:14px 12px;min-height:50px;text-align:left;font-weight:700;font-size:15px;cursor:pointer;width:100%;overflow-wrap:anywhere}
-.epc-overview-value:after{content:'›';float:right;font-size:24px;line-height:18px;color:#668aa4}
-.epc-overview-inline{display:flex;flex-direction:column;gap:10px;padding:8px 0}
-.epc-overview-inline.hidden{display:none}
-.epc-overview-inline input,.epc-overview-inline select,.epc-overview-inline textarea{width:100%;box-sizing:border-box;min-height:44px}
-.epc-overview-save{background:#082f52;color:#fff;border:0;border-radius:8px;padding:15px;font-weight:700;margin-top:10px;cursor:pointer}
+/* Openingen per gevelconstructie */
+.construction-item-edit{flex:0 0 36px;background:white;border:0;color:var(--navy);font-size:23px;cursor:pointer}
+.construction-item-edit:hover{background:#eef7f7}
+.opening-editor-content{background:white;border-radius:16px;padding:18px;margin:12px 16px;min-height:320px}
+.opening-field{display:flex;flex-direction:column;gap:10px;margin:16px 0}
+.opening-field>strong,.opening-overview-row>strong{font-size:13px;color:var(--navy)}
+.opening-field input{width:100%;min-height:46px;border:1px solid #a8dfc8;border-radius:9px;padding:10px;font:inherit}
+.opening-choices{display:grid;grid-template-columns:repeat(auto-fit,minmax(100px,1fr));gap:7px}
+.opening-choice{min-height:65px;background:#e3f2da;color:#082e50;border:0;border-radius:4px;padding:10px 6px;overflow-wrap:normal;word-break:normal;hyphens:auto;font-weight:600}
+.opening-choice.selected{background:#082e50;color:white}
+.opening-actions{display:flex;gap:10px;margin-top:24px}.opening-actions button{flex:1;min-height:45px}
+.opening-overview-row{display:flex;flex-direction:column;gap:7px;margin:12px 0}.opening-inline{padding:10px;border:1px solid #d9e8e5;border-radius:9px}.opening-inline button{width:100%;margin-top:8px}
+
+/* Openingen: dezelfde volledige hoogte en vaste onderacties als andere onderdelen. */
+#opening-page{display:flex;flex-direction:column;min-height:calc(100dvh - 100px)!important;padding-bottom:8px!important}
+#opening-page .epc-section-content{flex:1 1 auto!important;display:flex;flex-direction:column;min-height:0!important}
+#opening-page .epc-section-content>.construction-list{flex:1 1 auto;min-height:0!important}
+#opening-page .epc-photo-actions{position:sticky!important;bottom:8px!important;z-index:6;display:flex!important;align-items:center;justify-content:stretch;width:100%!important;max-width:none!important;margin:auto 0 0!important;padding:8px 4px 2px!important;background:var(--bg,#eaf2f7)}
+#opening-page .epc-photo-actions .floating-add{width:100%!important;max-width:none!important;min-width:0!important;flex:1!important;margin:0!important}
+.construction-item-edit{flex:0 0 28px!important;width:28px!important;font-size:17px!important;padding:0 3px!important}
